@@ -1,6 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
-from ..choices import UserRoles
+from ..choices import UserRoles, GenderChoices
 
 class User(AbstractUser):
     """Custom user model for students and teachers"""
@@ -15,7 +15,7 @@ class User(AbstractUser):
     )
     gender = models.CharField(
         max_length=1,
-        choices=[('M', 'Male'), ('F', 'Female')],
+        choices=GenderChoices.CHOICES,
         null=True,
         blank=True,
         help_text="Student's gender (required for students)"

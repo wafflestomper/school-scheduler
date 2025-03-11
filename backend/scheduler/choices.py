@@ -53,4 +53,12 @@ class SeparationPriorities:
         (MEDIUM, 'Medium Priority'),
         (LOW, 'Low Priority'),
         (LOWEST, 'Lowest Priority - Try to separate if possible'),
-    ) 
+    )
+
+class GenderChoices:
+    MALE = 'M'
+    FEMALE = 'F'
+    CHOICES = [
+        (MALE, 'Male'),
+        (FEMALE, 'Female'),
+    ] 

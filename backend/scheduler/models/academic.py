@@ -1,7 +1,7 @@
 from django.db import models
 from .users import User
 from ..choices import CourseTypes, CourseDurations
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 class Course(models.Model):
     """Model for academic courses"""
@@ -49,5 +49,14 @@ class Period(models.Model):
     
     def duration_minutes(self):
         """Calculate the duration of the period in minutes"""
-        delta = datetime.combine(date.today(), self.end_time) - datetime.combine(date.today(), self.start_time)
-        return delta.seconds / 60 
+        # Convert TimeField to datetime for calculation
+        today = date.today()
+        start_dt = datetime.combine(today, self.start_time)
+        end_dt = datetime.combine(today, self.end_time)
+        
+        # Handle periods that cross midnight
+        if end_dt < start_dt:
+            end_dt += timedelta(days=1)
+            
+        duration = end_dt - start_dt
+        return int(duration.total_seconds() / 60) 

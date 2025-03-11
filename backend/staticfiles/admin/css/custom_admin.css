@@ -1,0 +1,28 @@
+.submit-row .cancel-link {
+    background: #ba2121;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    color: #fff;
+    cursor: pointer;
+    float: right;
+    font-size: 13px;
+    font-weight: 400;
+    margin: 0 0 0 8px;
+    text-decoration: none;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 35px !important;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.submit-row .cancel-link:hover,
+.submit-row .cancel-link:active {
+    background: #a41515;
+    color: #fff;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+} 

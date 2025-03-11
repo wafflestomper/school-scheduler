@@ -17,4 +17,4 @@ class PeriodAdmin(admin.ModelAdmin):
     ordering = ('start_time',)
 
     def duration_minutes(self, obj):
-        return obj.get_duration() 
+        return obj.duration_minutes() 

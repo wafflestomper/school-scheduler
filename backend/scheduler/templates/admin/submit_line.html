@@ -1,0 +1,16 @@
+{% extends "admin/submit_line.html" %}
+{% load admin_urls admin_modify %}
+
+{% block submit-row %}
+<div class="submit-row">
+    {% if show_save %}<input type="submit" value="{% if original %}Save{% else %}Save and continue editing{% endif %}" class="default" name="_save">{% endif %}
+    {% if show_delete_link and original %}
+        {% url opts|admin_urlname:'delete' original.pk|admin_urlquote as delete_url %}
+        <p class="deletelink-box"><a href="{% add_preserved_filters delete_url %}" class="deletelink">Delete</a></p>
+    {% endif %}
+    {% if show_save_as_new %}<input type="submit" value="Save as new" name="_saveasnew">{% endif %}
+    {% if show_save_and_add_another %}<input type="submit" value="Save and add another" name="_addanother">{% endif %}
+    {% if show_save_and_continue %}<input type="submit" value="Save and continue editing" name="_continue">{% endif %}
+    <a href="{% url opts|admin_urlname:'changelist' %}" class="button cancel-link">Cancel</a>
+</div>
+{% endblock %} 

@@ -13,6 +13,13 @@ class User(AbstractUser):
         blank=True,
         help_text="Grade level (for students only)"
     )
+    gender = models.CharField(
+        max_length=1,
+        choices=[('M', 'Male'), ('F', 'Female')],
+        null=True,
+        blank=True,
+        help_text="Student's gender (required for students)"
+    )
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.get_role_display()})"

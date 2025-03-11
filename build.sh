@@ -3,10 +3,10 @@
 set -o errexit
 
 echo "Installing dependencies..."
-pip install -r requirements.txt
+pip install -r school_scheduler/requirements.txt
 
 echo "Moving to project directory..."
-cd /opt/render/project/src/school_scheduler
+cd school_scheduler
 
 echo "Running migrations..."
 python manage.py migrate

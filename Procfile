@@ -1,1 +1,1 @@
-web: gunicorn scheduler_config.wsgi:application 
+web: cd school_scheduler && gunicorn scheduler_config.wsgi:application --bind 0.0.0.0:$PORT --log-file - 

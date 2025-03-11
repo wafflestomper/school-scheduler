@@ -2,8 +2,7 @@ services:
   - type: web
     name: school-scheduler
     env: python
-    buildCommand: ./build.sh
-    startCommand: gunicorn --chdir /opt/render/project/src/school_scheduler --bind 0.0.0.0:$PORT scheduler_config.wsgi:application --log-file -
+    buildCommand: pip install -r requirements.txt && cd school_scheduler && python manage.py migrate && python manage.py collectstatic --no-input
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -18,9 +17,7 @@ services:
       - key: ALLOWED_HOSTS
         value: .onrender.com
       - key: PYTHONPATH
-        value: /opt/render/project/src/school_scheduler
-      - key: PORT
-        value: 10000
+        value: .
 
 databases:
   - name: school-scheduler-db

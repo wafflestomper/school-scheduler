@@ -12,11 +12,11 @@ class StudentFilterMixin:
 class TeacherFilterMixin:
     """Mixin to add teacher-related filters to admin views"""
     def get_teacher_filters(self):
-        # Check if this is being used with Course model (direct teacher field)
-        # or Schedule model (teacher through course)
+        # Check if this is being used with Section model (direct teacher field)
+        # or Schedule model (teacher through section)
         if hasattr(self.model, 'teacher'):
             return ('teacher__first_name', 'teacher__last_name')
-        return ('course__teacher__first_name', 'course__teacher__last_name')
+        return ('section__teacher__first_name', 'section__teacher__last_name')
 
     def get_list_filter(self, request):
         filters = super().get_list_filter(request)

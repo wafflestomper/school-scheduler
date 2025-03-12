@@ -1,19 +1,25 @@
 from django.contrib import admin
 from django.contrib.admin import AdminSite
+from .base import TeacherFilterMixin
+from .course import CourseAdmin
+from .section_admin import SectionAdmin
+from .period_admin import PeriodAdmin
 from .users import UserAdmin
-from .academic import CourseAdmin, PeriodAdmin, SectionAdmin
 from .facilities import RoomAdmin
-from .scheduling import ScheduleAdmin, StudentPreferenceAdmin
-from .groups import SiblingGroupAdmin, StudentSeparationGroupAdmin
+from .groups import StudentGroupAdmin, SiblingGroupAdmin
 from .configuration import (
-    TeacherConfigurationAdmin,
-    RoomConfigurationAdmin,
-    StudentConfigurationAdmin
+    SchedulingConfigurationAdmin,
+    SiblingConfigurationAdmin,
+    StudentGroupConfigurationAdmin,
+    ElectiveConfigurationAdmin,
+    CourseTypeConfigurationAdmin
 )
 from ..models import (
-    User, Course, Period, Section, Room, Schedule, StudentPreference,
-    SiblingGroup, StudentSeparationGroup,
-    TeacherConfiguration, RoomConfiguration, StudentConfiguration
+    User, Course, Period, Section, Room,
+    StudentGroup, SiblingGroup,
+    SchedulingConfiguration, SiblingConfiguration,
+    StudentGroupConfiguration, ElectiveConfiguration,
+    CourseTypeConfiguration
 )
 
 class CustomAdminSite(AdminSite):
@@ -31,10 +37,26 @@ admin.site.register(Course, CourseAdmin)
 admin.site.register(Section, SectionAdmin)
 admin.site.register(Period, PeriodAdmin)
 admin.site.register(Room, RoomAdmin)
-admin.site.register(Schedule, ScheduleAdmin)
-admin.site.register(StudentPreference, StudentPreferenceAdmin)
+admin.site.register(StudentGroup, StudentGroupAdmin)
 admin.site.register(SiblingGroup, SiblingGroupAdmin)
-admin.site.register(StudentSeparationGroup, StudentSeparationGroupAdmin)
-admin.site.register(TeacherConfiguration, TeacherConfigurationAdmin)
-admin.site.register(RoomConfiguration, RoomConfigurationAdmin)
-admin.site.register(StudentConfiguration, StudentConfigurationAdmin) 
+admin.site.register(SchedulingConfiguration, SchedulingConfigurationAdmin)
+admin.site.register(SiblingConfiguration, SiblingConfigurationAdmin)
+admin.site.register(StudentGroupConfiguration, StudentGroupConfigurationAdmin)
+admin.site.register(ElectiveConfiguration, ElectiveConfigurationAdmin)
+admin.site.register(CourseTypeConfiguration, CourseTypeConfigurationAdmin)
+
+__all__ = [
+    'TeacherFilterMixin',
+    'CourseAdmin',
+    'SectionAdmin',
+    'PeriodAdmin',
+    'UserAdmin',
+    'RoomAdmin',
+    'StudentGroupAdmin',
+    'SiblingGroupAdmin',
+    'SchedulingConfigurationAdmin',
+    'SiblingConfigurationAdmin',
+    'StudentGroupConfigurationAdmin',
+    'ElectiveConfigurationAdmin',
+    'CourseTypeConfigurationAdmin'
+] 

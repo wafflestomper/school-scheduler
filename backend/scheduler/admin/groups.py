@@ -1,5 +1,5 @@
 from django.contrib import admin
-from ..models import SiblingGroup, StudentSeparationGroup
+from ..models import SiblingGroup, StudentGroup
 
 @admin.register(SiblingGroup)
 class SiblingGroupAdmin(admin.ModelAdmin):
@@ -11,8 +11,8 @@ class SiblingGroupAdmin(admin.ModelAdmin):
         return obj.students.count()
     get_student_count.short_description = 'Number of Siblings'
 
-@admin.register(StudentSeparationGroup)
-class StudentSeparationGroupAdmin(admin.ModelAdmin):
+@admin.register(StudentGroup)
+class StudentGroupAdmin(admin.ModelAdmin):
     list_display = ('name', 'priority', 'get_student_count')
     list_filter = ('priority',)
     search_fields = ('name', 'description', 'students__username',

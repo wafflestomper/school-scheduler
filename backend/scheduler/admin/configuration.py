@@ -1,24 +1,40 @@
 from django.contrib import admin
-from ..models import TeacherConfiguration, RoomConfiguration, StudentConfiguration
+from ..models import (
+    SchedulingConfiguration, SiblingConfiguration,
+    StudentGroupConfiguration, ElectiveConfiguration,
+    CourseTypeConfiguration
+)
 
-@admin.register(TeacherConfiguration)
-class TeacherConfigurationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'active', 'max_consecutive_periods', 'min_prep_periods',
-                   'respect_subject_preferences')
+@admin.register(SchedulingConfiguration)
+class SchedulingConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'active', 'max_class_size', 'max_consecutive_periods',
+                   'min_prep_periods', 'prioritize_specialized_rooms')
     list_filter = ('active',)
     search_fields = ('name',)
 
-@admin.register(RoomConfiguration)
-class RoomConfigurationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'active', 'prioritize_specialized_rooms',
-                   'allow_room_sharing', 'max_room_utilization')
+@admin.register(SiblingConfiguration)
+class SiblingConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'active', 'keep_siblings_together', 'priority')
     list_filter = ('active',)
     search_fields = ('name',)
 
-@admin.register(StudentConfiguration)
-class StudentConfigurationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'active', 'max_class_size', 'respect_student_preferences',
-                   'enforce_grade_levels', 'respect_separation_groups',
-                   'keep_siblings_together')
+@admin.register(StudentGroupConfiguration)
+class StudentGroupConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'active', 'respect_separation_groups',
+                   'respect_grouping_preferences', 'priority')
+    list_filter = ('active',)
+    search_fields = ('name',)
+
+@admin.register(ElectiveConfiguration)
+class ElectiveConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'active', 'max_electives_per_student',
+                   'prioritize_grade_level', 'allow_mixed_grades')
+    list_filter = ('active',)
+    search_fields = ('name',)
+
+@admin.register(CourseTypeConfiguration)
+class CourseTypeConfigurationAdmin(admin.ModelAdmin):
+    list_display = ('name', 'active', 'enforce_grade_levels',
+                   'allow_mixed_levels', 'respect_prerequisites')
     list_filter = ('active',)
     search_fields = ('name',) 

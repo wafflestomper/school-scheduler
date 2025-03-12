@@ -4,13 +4,13 @@ services:
     runtime: python
     region: ohio
     plan: free
-    buildCommand: pip install -r requirements.txt && cd backend && ./build.sh
-    startCommand: cd backend && gunicorn scheduler_config.wsgi:application --bind=0.0.0.0:$PORT --workers 4 --log-file logs/gunicorn.log --log-level debug
+    buildCommand: cd backend && pip install -r requirements.txt && ./build.sh
+    startCommand: cd backend && PYTHONPATH=/opt/render/project/src/backend gunicorn --bind=0.0.0.0:$PORT scheduler_config.wsgi:application
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
       - key: RENDER
-        value: true
+        value: "true"
       - key: DATABASE_URL
         fromDatabase:
           name: school-scheduler-db
@@ -18,15 +18,13 @@ services:
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: DJANGO_DEBUG
-        value: false
+        value: "false"
       - key: ALLOWED_HOSTS
         value: .onrender.com
-      - key: PYTHONPATH
-        value: .
-      - key: PORT
-        value: 10000
       - key: DJANGO_SETTINGS_MODULE
         value: scheduler_config.settings
+      - key: PORT
+        value: 10000
     healthCheckPath: /admin/
     autoDeploy: true
 

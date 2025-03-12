@@ -17,10 +17,10 @@ pip install -r requirements.txt
 echo "Setting up environment..."
 export DJANGO_SETTINGS_MODULE=scheduler_config.settings
 
-echo "Running migrations..."
-python manage.py migrate
-
 echo "Collecting static files..."
 python manage.py collectstatic --no-input
+
+echo "Running migrations..."
+python manage.py migrate --no-input
 
 echo "Build completed." 

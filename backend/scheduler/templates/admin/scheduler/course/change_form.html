@@ -1,0 +1,427 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .student-assignment {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    .student-list {
+        margin: 10px 0;
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #eee;
+        padding: 10px;
+    }
+    .student-filters {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #f9f9f9;
+        border-radius: 4px;
+    }
+    .student-actions {
+        margin: 10px 0;
+    }
+    .student-item {
+        padding: 5px;
+        margin: 2px 0;
+        display: flex;
+        align-items: center;
+    }
+    .student-item:hover {
+        background-color: #f5f5f5;
+    }
+    .student-info {
+        margin-left: 10px;
+    }
+    .filter-group {
+        display: inline-block;
+        margin-right: 20px;
+    }
+    .capacity-info {
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #e8f5e9;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{{ block.super }}
+
+{% if original %}  {# Only show this section when editing an existing course #}
+<div class="student-assignment">
+    <h2>Student Assignment</h2>
+    
+    <div class="capacity-info">
+        <p>Total Course Capacity: {{ original.get_total_capacity }} students ({{ original.num_sections }} sections × {{ original.max_students_per_section }} students per section)</p>
+        <p>Currently Enrolled: <span id="enrolled-count">0</span> students</p>
+        <p>Available Spots: <span id="available-spots">{{ original.get_total_capacity }}</span></p>
+    </div>
+    
+    <div class="student-filters">
+        <div class="filter-group">
+            <label for="grade-filter">Grade Level:</label>
+            <select id="grade-filter">
+                <option value="">All Grades</option>
+                {% for grade in available_grades %}
+                <option value="{{ grade }}" {% if grade == original.grade_level %}selected{% endif %}>Grade {{ grade }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="filter-group">
+            <label for="name-filter">Search by Name:</label>
+            <input type="text" id="name-filter" placeholder="Type to search...">
+        </div>
+    </div>
+
+    <div class="student-actions">
+        <button type="button" id="select-all">Select All Filtered</button>
+        <button type="button" id="deselect-all">Deselect All</button>
+        <button type="button" id="add-selected" class="default">Add Selected Students</button>
+    </div>
+
+    <div class="student-list" id="available-students">
+        <h3>Available Students</h3>
+        {# Students will be populated via JavaScript #}
+    </div>
+
+    <div class="student-list" id="enrolled-students">
+        <h3>Enrolled Students (<span class="enrolled-count">0</span>)</h3>
+        <button type="button" id="remove-all" class="remove-all" style="margin-bottom: 10px; color: #fff; background-color: #dc3545; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Remove All</button>
+        {# Enrolled students will be populated via JavaScript #}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const gradeFilter = document.getElementById('grade-filter');
+    const nameFilter = document.getElementById('name-filter');
+    const selectAllBtn = document.getElementById('select-all');
+    const deselectAllBtn = document.getElementById('deselect-all');
+    const addSelectedBtn = document.getElementById('add-selected');
+    const removeAllBtn = document.getElementById('remove-all');
+    const availableStudentsList = document.getElementById('available-students');
+    const enrolledStudentsList = document.getElementById('enrolled-students');
+    const enrolledCount = document.getElementById('enrolled-count');
+    const availableSpots = document.getElementById('available-spots');
+    const courseId = "{{ original.id }}";
+    const totalCapacity = parseInt("{{ original.get_total_capacity }}");
+    
+    let students = [];
+    let enrolledStudents = new Set();
+    
+    // Fetch students data
+    async function fetchStudents() {
+        try {
+            console.log('Fetching available students...');
+            const response = await fetch(`/scheduler/api/courses/${courseId}/available-students/`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (!response.ok) {
+                const error = await response.text();
+                console.error('Server response:', error);
+                throw new Error('Failed to fetch students');
+            }
+            const data = await response.json();
+            console.log('Received available students:', data);
+            
+            // Only update or add available students, don't overwrite the entire array
+            data.students.forEach(student => {
+                const existingIndex = students.findIndex(s => s.id === student.id);
+                if (existingIndex >= 0) {
+                    students[existingIndex] = student;
+                } else if (!enrolledStudents.has(student.id)) {
+                    students.push(student);
+                }
+            });
+            
+            // Update grade level filter options
+            const gradeOptions = data.available_grades.map(grade => 
+                `<option value="${grade}" ${grade === data.course_grade ? 'selected' : ''}>Grade ${grade}</option>`
+            ).join('');
+            gradeFilter.innerHTML = `
+                <option value="">All Grades</option>
+                ${gradeOptions}
+            `;
+            
+            console.log('Current students array:', students);
+            console.log('Current enrolledStudents set:', Array.from(enrolledStudents));
+            updateStudentLists();
+        } catch (error) {
+            console.error('Error fetching students:', error);
+            availableStudentsList.innerHTML = `<p class="error">Error loading available students: ${error.message}</p>`;
+        }
+    }
+    
+    // Fetch enrolled students
+    async function fetchEnrolledStudents() {
+        try {
+            console.log('Fetching enrolled students...');
+            const response = await fetch(`/scheduler/api/courses/${courseId}/enrolled-students/`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (!response.ok) {
+                const error = await response.text();
+                console.error('Server response:', error);
+                throw new Error('Failed to fetch enrolled students');
+            }
+            const enrolled = await response.json();
+            console.log('Received enrolled students:', enrolled);
+            
+            // Clear the enrolled set and rebuild it
+            enrolledStudents.clear();
+            
+            // Add enrolled students to our students array and enrolled set
+            enrolled.forEach(student => {
+                enrolledStudents.add(student.id);
+                
+                // Update or add the student in our students array
+                const existingIndex = students.findIndex(s => s.id === student.id);
+                if (existingIndex >= 0) {
+                    students[existingIndex] = student;
+                } else {
+                    students.push(student);
+                }
+            });
+            
+            console.log('Updated students array:', students);
+            console.log('Updated enrolledStudents set:', Array.from(enrolledStudents));
+            
+            updateStudentLists();
+            updateEnrollmentCounts();
+        } catch (error) {
+            console.error('Error fetching enrolled students:', error);
+            enrolledStudentsList.innerHTML = `<p class="error">Error loading enrolled students: ${error.message}</p>`;
+        }
+    }
+    
+    function updateStudentLists() {
+        console.log('Updating student lists...');
+        console.log('Current students:', students);
+        console.log('Current enrolled set:', Array.from(enrolledStudents));
+        
+        const gradeLevel = parseInt(gradeFilter.value) || '';
+        const nameSearch = nameFilter.value.toLowerCase().trim();
+        
+        // Get enrolled students first
+        const enrolledList = students.filter(student => enrolledStudents.has(student.id));
+        console.log('Filtered enrolled list:', enrolledList);
+        
+        // Filter available students
+        const filteredStudents = students.filter(student => {
+            const matchesGrade = gradeLevel === '' || student.grade_level === gradeLevel;
+            const matchesName = nameSearch === '' || 
+                student.first_name.toLowerCase().includes(nameSearch) ||
+                student.last_name.toLowerCase().includes(nameSearch);
+            return matchesGrade && matchesName && !enrolledStudents.has(student.id);
+        });
+        console.log('Filtered available students:', filteredStudents);
+        
+        // Update available students list
+        availableStudentsList.innerHTML = `<h3>Available Students (${filteredStudents.length})</h3>` +
+            filteredStudents.map(student => `
+                <div class="student-item">
+                    <input type="checkbox" value="${student.id}">
+                    <div class="student-info">
+                        ${student.first_name} ${student.last_name} (Grade ${student.grade_level})
+                    </div>
+                </div>
+            `).join('');
+        
+        // Update enrolled students list while preserving the Remove All button
+        const enrolledContent = `
+            <h3>Enrolled Students (${enrolledList.length})</h3>
+            <button type="button" id="remove-all" class="remove-all" style="margin-bottom: 10px; color: #fff; background-color: #dc3545; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Remove All</button>
+            ${enrolledList.map(student => `
+                <div class="student-item">
+                    <button type="button" class="remove-student" data-id="${student.id}">Remove</button>
+                    <div class="student-info">
+                        ${student.first_name} ${student.last_name} (Grade ${student.grade_level})
+                    </div>
+                </div>
+            `).join('')}
+        `;
+        
+        enrolledStudentsList.innerHTML = enrolledContent;
+        
+        // Re-attach event listener for the Remove All button
+        const removeAllBtn = document.getElementById('remove-all');
+        if (removeAllBtn) {
+            removeAllBtn.addEventListener('click', handleRemoveAll);
+        }
+        
+        console.log('Updated DOM with:', {
+            availableCount: filteredStudents.length,
+            enrolledCount: enrolledList.length
+        });
+            
+        // Update counts
+        updateEnrollmentCounts();
+    }
+    
+    // Define the handleRemoveAll function outside to avoid recreating it
+    async function handleRemoveAll() {
+        if (enrolledStudents.size === 0) return;
+        
+        if (!confirm(`Are you sure you want to remove all ${enrolledStudents.size} students from this course?`)) {
+            return;
+        }
+        
+        console.log('Removing all students...');
+        
+        try {
+            const response = await fetch(`/scheduler/api/courses/${courseId}/remove-all-students/`, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to remove all students');
+            }
+            
+            console.log('Successfully removed all students, fetching updated lists...');
+
+            // First fetch enrolled students to get the current state
+            await fetchEnrolledStudents();
+            
+            // Then fetch available students to update that list
+            await fetchStudents();
+            
+            // Force a final update of the lists
+            updateStudentLists();
+            
+        } catch (error) {
+            console.error('Error removing all students:', error);
+            alert('Failed to remove all students: ' + error.message);
+        }
+    }
+    
+    function updateEnrollmentCounts() {
+        const enrolled = enrolledStudents.size;
+        enrolledCount.textContent = enrolled;
+        availableSpots.textContent = totalCapacity - enrolled;
+    }
+    
+    // Event Listeners
+    gradeFilter.addEventListener('change', updateStudentLists);
+    nameFilter.addEventListener('input', updateStudentLists);
+    
+    selectAllBtn.addEventListener('click', () => {
+        const checkboxes = availableStudentsList.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = true);
+    });
+    
+    deselectAllBtn.addEventListener('click', () => {
+        const checkboxes = availableStudentsList.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
+    });
+    
+    addSelectedBtn.addEventListener('click', async () => {
+        const selectedIds = Array.from(
+            availableStudentsList.querySelectorAll('input[type="checkbox"]:checked')
+        ).map(cb => cb.value);
+        
+        if (selectedIds.length === 0) return;
+        
+        console.log('Adding students:', selectedIds);
+        
+        try {
+            const response = await fetch(`/scheduler/api/courses/${courseId}/add-students/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({ student_ids: selectedIds })
+            });
+            
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to add students');
+            }
+            
+            console.log('Successfully added students, fetching updated lists...');
+
+            // First fetch enrolled students to get the current state
+            await fetchEnrolledStudents();
+            
+            // Then fetch available students to update that list
+            await fetchStudents();
+            
+            // Force a final update of the lists
+            updateStudentLists();
+            
+        } catch (error) {
+            console.error('Error adding students:', error);
+            alert('Failed to add students: ' + error.message);
+        }
+    });
+    
+    enrolledStudentsList.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('remove-student')) {
+            const studentId = parseInt(e.target.dataset.id);
+            try {
+                const response = await fetch(`/scheduler/api/courses/${courseId}/remove-student/${studentId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to remove student');
+                }
+                
+                // First fetch enrolled students to get the current state
+                await fetchEnrolledStudents();
+                
+                // Then fetch available students to update that list
+                await fetchStudents();
+                
+                // Finally update both lists to ensure they're in sync
+                updateStudentLists();
+                
+            } catch (error) {
+                console.error('Error removing student:', error);
+                alert('Failed to remove student: ' + error.message);
+            }
+        }
+    });
+    
+    // Initial load - fetch enrolled students first, then available students
+    console.log('Starting initial load...');
+    fetchEnrolledStudents().then(() => {
+        console.log('Enrolled students loaded, fetching available students...');
+        return fetchStudents();
+    }).then(() => {
+        console.log('Initial load complete');
+        // Force a final update of the lists
+        updateStudentLists();
+    });
+});
+</script>
+{% endif %}
+{% endblock %} 

@@ -8,6 +8,13 @@ A Django-based school scheduling system that helps create optimal class schedule
 - Student preference handling
 - Room allocation
 - Period assignment
+- Student Enrollment Management:
+  - Bulk student import via CSV
+  - Grade-level filtering
+  - Name-based search
+  - Batch student enrollment
+  - Individual and bulk student removal
+  - Real-time capacity tracking
 - Special scheduling constraints:
   - Sibling separation options
   - Student group separation
@@ -35,8 +42,12 @@ backend/
 │   │   ├── groups.py       # Group admin
 │   │   ├── scheduling.py   # Schedule admin
 │   │   └── users.py        # User admin
+│   ├── views/              # View logic
+│   │   ├── course_views.py # Course student management
+│   │   └── user_views.py   # User management
+│   ├── templates/          # HTML templates
+│   │   └── admin/         # Custom admin templates
 │   ├── choices.py          # Enumeration choices
-│   ├── views.py            # View logic
 │   └── csv_handlers.py     # CSV import/export
 ├── scheduler_config/        # Project settings
 └── example_data/           # Sample CSV data
@@ -52,7 +63,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 2. Install dependencies:
 ```bash
-pip install django djangorestframework django-cors-headers psycopg2-binary
+pip install -r requirements.txt
 ```
 
 3. Set up the database:
@@ -81,6 +92,34 @@ The system accepts CSV files for:
 
 Example data files are provided in the `example_data/` directory.
 
+### Bulk Student Import
+To import students in bulk:
+1. Navigate to the admin interface
+2. Click on "Bulk Upload" in the Users section
+3. Download the template CSV file
+4. Fill in the student data
+5. Upload the completed CSV file
+
+## Student Enrollment Management
+
+The system provides a comprehensive interface for managing student enrollments:
+
+1. Course Capacity Tracking:
+   - Real-time display of total capacity
+   - Current enrollment count
+   - Available spots calculation
+
+2. Student Filtering:
+   - Filter by grade level
+   - Search by student name
+   - View available vs. enrolled students
+
+3. Enrollment Actions:
+   - Select and add multiple students at once
+   - Remove individual students
+   - Remove all enrolled students
+   - Automatic validation against course capacity
+
 ## Configuration
 
 The scheduling system supports various configuration options through the admin interface:
@@ -88,6 +127,8 @@ The scheduling system supports various configuration options through the admin i
 - Student group separation
 - Elective grouping options
 - Course type scheduling preferences
+- Course capacity settings
+- Grade level restrictions
 
 ## Copyright
 

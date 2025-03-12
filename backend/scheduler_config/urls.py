@@ -19,5 +19,5 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('scheduler.urls')),  # Include scheduler URLs at root
+    path('scheduler/', include('scheduler.urls')),  # Include scheduler URLs with prefix
 ]

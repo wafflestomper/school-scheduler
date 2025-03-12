@@ -65,21 +65,17 @@ WSGI_APPLICATION = 'scheduler_config.wsgi.application'
 
 # Database configuration
 if 'RENDER' in os.environ:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'school_scheduler',
-            'USER': 'school_scheduler',
-            'HOST': os.environ.get('POSTGRES_HOST', ''),
-            'PORT': 5432,
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', ''),
-        }
-    }
-    
-    # Ensure we have required environment variables
-    if not os.environ.get('POSTGRES_HOST') or not os.environ.get('POSTGRES_PASSWORD'):
-        print("ERROR: Missing required database environment variables!")
+    # Check for DATABASE_URL
+    if not os.environ.get('DATABASE_URL'):
+        print("ERROR: DATABASE_URL environment variable is required!")
         sys.exit(1)
+        
+    DATABASES = {
+        'default': dj_database_url.config(
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }
 else:
     DATABASES = {
         'default': {

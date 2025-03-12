@@ -1,9 +1,11 @@
 services:
   - type: web
     name: school-scheduler
-    env: python
+    runtime: python
+    region: ohio
+    plan: free
     buildCommand: cd backend && ./build.sh
-    startCommand: gunicorn wsgi:app --bind=0.0.0.0:$PORT --log-file backend/logs/gunicorn.log --log-level debug
+    startCommand: cd backend && gunicorn --chdir /opt/render/project/src/backend scheduler_config.wsgi:application --bind 0.0.0.0:$PORT --workers 4 --threads 2 --log-file /opt/render/project/src/backend/logs/gunicorn.log --log-level debug --timeout 120
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -18,13 +20,13 @@ services:
       - key: ALLOWED_HOSTS
         value: .onrender.com
       - key: PYTHONPATH
-        value: .
+        value: /opt/render/project/src/backend
       - key: PORT
-        value: 8000
-      - key: WEB_CONCURRENCY
-        value: 4
+        value: 10000
       - key: DJANGO_SETTINGS_MODULE
         value: scheduler_config.settings
+    healthCheckPath: /admin/
+    autoDeploy: false
 
 databases:
   - name: school-scheduler-db

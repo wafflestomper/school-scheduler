@@ -9,10 +9,14 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
-      - key: DATABASE_URL
+      - key: POSTGRES_HOST
         fromDatabase:
           name: school-scheduler-db
-          property: connectionString
+          property: host
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: school-scheduler-db
+          property: password
       - key: DJANGO_SECRET_KEY
         generateValue: true
       - key: DJANGO_DEBUG

@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import dj_database_url
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -63,13 +64,22 @@ TEMPLATES = [
 WSGI_APPLICATION = 'scheduler_config.wsgi.application'
 
 # Database configuration
-if os.environ.get('DATABASE_URL'):
+if 'RENDER' in os.environ:
     DATABASES = {
-        'default': dj_database_url.config(
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'school_scheduler',
+            'USER': 'school_scheduler',
+            'HOST': os.environ.get('POSTGRES_HOST', ''),
+            'PORT': 5432,
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', ''),
+        }
     }
+    
+    # Ensure we have required environment variables
+    if not os.environ.get('POSTGRES_HOST') or not os.environ.get('POSTGRES_PASSWORD'):
+        print("ERROR: Missing required database environment variables!")
+        sys.exit(1)
 else:
     DATABASES = {
         'default': {

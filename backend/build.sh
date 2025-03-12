@@ -18,13 +18,12 @@ echo "Setting up environment..."
 export DJANGO_SETTINGS_MODULE=scheduler_config.settings
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 
-echo "Verifying database connection..."
+echo "Verifying database environment..."
 python -c "
 import os
-import dj_database_url
-print('DATABASE_URL:', bool(os.environ.get('DATABASE_URL')))
-config = dj_database_url.config()
-print('Database config:', {k: v for k, v in config.items() if k != 'PASSWORD'})
+print('RENDER:', 'RENDER' in os.environ)
+print('POSTGRES_HOST:', bool(os.environ.get('POSTGRES_HOST')))
+print('POSTGRES_PASSWORD:', bool(os.environ.get('POSTGRES_PASSWORD')))
 "
 
 echo "Running migrations..."

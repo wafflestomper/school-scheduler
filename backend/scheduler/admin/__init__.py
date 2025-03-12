@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.admin import AdminSite
 from .users import UserAdmin
-from .academic import CourseAdmin, PeriodAdmin
+from .academic import CourseAdmin, PeriodAdmin, SectionAdmin
 from .facilities import RoomAdmin
 from .scheduling import ScheduleAdmin, StudentPreferenceAdmin
 from .groups import SiblingGroupAdmin, StudentSeparationGroupAdmin
@@ -11,7 +11,7 @@ from .configuration import (
     StudentConfigurationAdmin
 )
 from ..models import (
-    User, Course, Period, Room, Schedule, StudentPreference,
+    User, Course, Period, Section, Room, Schedule, StudentPreference,
     SiblingGroup, StudentSeparationGroup,
     TeacherConfiguration, RoomConfiguration, StudentConfiguration
 )
@@ -28,6 +28,7 @@ admin.site = CustomAdminSite()
 # Register all models with the custom admin site
 admin.site.register(User, UserAdmin)
 admin.site.register(Course, CourseAdmin)
+admin.site.register(Section, SectionAdmin)
 admin.site.register(Period, PeriodAdmin)
 admin.site.register(Room, RoomAdmin)
 admin.site.register(Schedule, ScheduleAdmin)

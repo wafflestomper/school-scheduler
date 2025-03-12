@@ -1,0 +1,4 @@
+user_id,username,email,first_name,last_name,grade_level,gender,role
+1001,john.doe,john.doe@example.com,John,Doe,7,M,STUDENT
+1002,jane.smith,jane.smith@example.com,Jane,Smith,,F,TEACHER
+1003,admin.user,admin@example.com,Admin,User,,M,ADMIN 

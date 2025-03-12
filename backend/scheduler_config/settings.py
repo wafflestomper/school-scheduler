@@ -1,7 +1,5 @@
 import os
 from pathlib import Path
-import dj_database_url
-import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,9 +10,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-your-secret-ke
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True').lower() == 'true'
 
-ALLOWED_HOSTS = ['school-scheduler.onrender.com', 'localhost', '127.0.0.1']
-if os.environ.get('ALLOWED_HOSTS'):
-    ALLOWED_HOSTS.extend(os.environ.get('ALLOWED_HOSTS').split(','))
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 # Application definition
 INSTALLED_APPS = [
@@ -63,26 +59,13 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'scheduler_config.wsgi.application'
 
-# Database configuration
-if 'RENDER' in os.environ:
-    # Check for DATABASE_URL
-    if not os.environ.get('DATABASE_URL'):
-        print("ERROR: DATABASE_URL environment variable is required!")
-        sys.exit(1)
-        
-    DATABASES = {
-        'default': dj_database_url.config(
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
+# Database
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
-else:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
+}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -120,7 +103,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # CORS settings
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",  # React development server
-    "https://school-scheduler.onrender.com",
 ]
 CORS_ALLOW_CREDENTIALS = True
 

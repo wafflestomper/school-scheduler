@@ -6,7 +6,12 @@ echo "Setting up directories..."
 mkdir -p logs
 mkdir -p staticfiles
 
-echo "Installing dependencies..."
+echo "Installing root dependencies..."
+cd ..
+pip install -r requirements.txt
+
+echo "Installing backend dependencies..."
+cd backend
 pip install -r requirements.txt
 
 echo "Setting up environment..."

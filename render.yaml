@@ -4,7 +4,7 @@ services:
     runtime: python
     region: ohio
     plan: free
-    buildCommand: cd backend && ./build.sh
+    buildCommand: pip install -r requirements.txt && cd backend && ./build.sh
     startCommand: gunicorn app:app --bind=0.0.0.0:$PORT --workers 4 --log-file backend/logs/gunicorn.log --log-level debug
     envVars:
       - key: PYTHON_VERSION

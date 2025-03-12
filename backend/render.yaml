@@ -3,7 +3,7 @@ services:
     name: school-scheduler
     env: python
     buildCommand: ./build.sh
-    startCommand: gunicorn scheduler_config.wsgi:application
+    startCommand: cd /opt/render/project/src && gunicorn --chdir /opt/render/project/src scheduler_config.wsgi:application --log-file -
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -18,7 +18,9 @@ services:
       - key: ALLOWED_HOSTS
         value: .onrender.com
       - key: PYTHONPATH
-        value: .
+        value: /opt/render/project/src
+      - key: PORT
+        value: 8000
 
 databases:
   - name: school-scheduler-db

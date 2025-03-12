@@ -15,7 +15,7 @@ pip install -r requirements.txt
 
 echo "Setting up environment..."
 export DJANGO_SETTINGS_MODULE=scheduler_config.settings
-export PYTHONPATH=/opt/render/project/src/backend:$PYTHONPATH
+export PYTHONPATH=/opt/render/project/src:/opt/render/project/src/backend:$PYTHONPATH
 
 echo "Verifying environment..."
 python -c "
@@ -28,6 +28,7 @@ print('DJANGO_SETTINGS_MODULE:', os.environ.get('DJANGO_SETTINGS_MODULE'))
 print('PYTHONPATH:', os.environ.get('PYTHONPATH'))
 print('\nCurrent working directory:', os.getcwd())
 print('\nDirectory contents:', os.listdir('.'))
+print('\nParent directory contents:', os.listdir('..'))
 print('\nPython sys.path:')
 for p in sys.path:
     print(f'  {p}')
@@ -40,6 +41,14 @@ from django.conf import settings
 print('Django version:', django.get_version())
 print('DEBUG:', settings.DEBUG)
 print('DATABASES:', {k: {**v, 'PASSWORD': '***'} if k == 'default' else v for k, v in settings.DATABASES.items()})
+"
+
+echo "Testing WSGI application..."
+python -c "
+import os, sys
+sys.path.insert(0, '/opt/render/project/src')
+from app import application
+print('WSGI application loaded successfully')
 "
 
 echo "Running migrations..."

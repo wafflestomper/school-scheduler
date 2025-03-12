@@ -1,11 +1,18 @@
 services:
   - type: web
-    name: school-scheduler
+    name: school-scheduler-django
     runtime: python
     region: ohio
     plan: free
-    buildCommand: cd backend && pip install -r requirements.txt && ./build.sh
-    startCommand: cd backend && PYTHONPATH=/opt/render/project/src/backend gunicorn --bind=0.0.0.0:$PORT scheduler_config.wsgi:application
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+      chmod +x build.sh
+      ./build.sh
+    startCommand: |
+      cd backend
+      export PYTHONPATH=/opt/render/project/src/backend
+      gunicorn scheduler_config.wsgi:application --bind=0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0

@@ -1,145 +1,234 @@
-# School Scheduler
+# School Scheduling System v0.1.0
 
-A Django-based school scheduling system that helps create optimal class schedules while considering various constraints and preferences.
+A robust and efficient school scheduling system built with Django, designed to handle course scheduling, student assignments, and resource management for educational institutions.
 
 ## Features
 
-- Course scheduling with conflict resolution
-- Student preference handling
-- Room allocation
-- Period assignment
-- Student Enrollment Management:
-  - Bulk student import via CSV
-  - Grade-level filtering
-  - Name-based search
-  - Batch student enrollment
-  - Individual and bulk student removal
-  - Real-time capacity tracking
-- Special scheduling constraints:
-  - Sibling separation options
-  - Student group separation
-  - Elective grouping preferences
-  - Course type scheduling preferences
+### 1. Course and Section Management
+- Create and manage courses with detailed information
+- Handle multiple sections per course
+- Track course types (required vs. elective)
+- Manage course prerequisites and grade level restrictions
 
-## Project Structure
+### 2. Room and Period Management
+- Define and manage school periods with time slots
+- Track room capacity and availability
+- Detect and prevent scheduling conflicts
+- Optimize room utilization based on capacity requirements
 
-```
-backend/
-├── scheduler/                # Main application
-│   ├── models/              # Database models
-│   │   ├── academic.py      # Course and Period models
-│   │   ├── base.py         # Base configuration model
-│   │   ├── configuration.py # Configuration models
-│   │   ├── facilities.py   # Room model
-│   │   ├── groups.py       # Student grouping models
-│   │   ├── scheduling.py   # Schedule and preference models
-│   │   └── users.py        # Custom User model
-│   ├── admin/              # Admin interface
-│   │   ├── base.py         # Reusable admin mixins
-│   │   ├── academic.py     # Course and Period admin
-│   │   ├── configuration.py # Configuration admin
-│   │   ├── facilities.py   # Room admin
-│   │   ├── groups.py       # Group admin
-│   │   ├── scheduling.py   # Schedule admin
-│   │   └── users.py        # User admin
-│   ├── views/              # View logic
-│   │   ├── course_views.py # Course student management
-│   │   └── user_views.py   # User management
-│   ├── templates/          # HTML templates
-│   │   └── admin/         # Custom admin templates
-│   ├── choices.py          # Enumeration choices
-│   └── csv_handlers.py     # CSV import/export
-├── scheduler_config/        # Project settings
-└── example_data/           # Sample CSV data
-```
+### 3. Student Management
+- Manage student profiles and course preferences
+- Support for student groups and sibling relationships
+- Handle grade-level specific requirements
+- Track student course history and prerequisites
 
-## Setup
+### 4. Teacher Management
+- Manage teacher schedules and availability
+- Track teacher specializations and preferences
+- Prevent scheduling conflicts
+- Optimize teacher assignments
 
-1. Create and activate a virtual environment:
+### 5. Schedule Optimization
+- Automated conflict detection and prevention
+- Room capacity validation
+- Period overlap checking
+- Student and teacher availability verification
+
+### 6. Data Import/Export
+- Bulk import of student data
+- Course data import functionality
+- Period and room data import
+- Export capabilities for schedules and reports
+
+### 7. Admin Interface
+- Custom admin dashboard
+- Bulk upload interfaces
+- Detailed view of schedules and conflicts
+- User management and permissions
+
+## Technical Features
+
+### 1. Performance Optimizations
+- Efficient database queries with select_related and prefetch_related
+- Comprehensive caching system for frequently accessed data
+- Optimized bulk operations for data imports
+- Database indexing for quick lookups
+
+### 2. Data Validation
+- Comprehensive input validation
+- Schedule conflict detection
+- Room capacity verification
+- Student eligibility checking
+
+### 3. Error Handling
+- Detailed error messages
+- Transaction management
+- Conflict resolution suggestions
+- Logging and monitoring
+
+### 4. Security
+- Role-based access control
+- Input sanitization
+- CSRF protection
+- Secure data handling
+
+## Installation
+
+1. Clone the repository:
 ```bash
-python3 -m venv venv
+git clone https://github.com/your-repo/school-scheduler.git
+cd school-scheduler
+```
+
+2. Create and activate a virtual environment:
+```bash
+python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 ```
 
-2. Install dependencies:
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. Set up the database:
+4. Set up the database:
 ```bash
-createdb school_scheduler  # Requires PostgreSQL
 python manage.py migrate
 ```
 
-4. Create a superuser:
+5. Create a superuser:
 ```bash
 python manage.py createsuperuser
 ```
 
-5. Run the development server:
+6. Run the development server:
 ```bash
 python manage.py runserver
 ```
 
-## Data Import
-
-The system accepts CSV files for:
-- Users (students)
-- Courses
-- Periods
-- Rooms
-
-Example data files are provided in the `example_data/` directory.
-
-### Bulk Student Import
-To import students in bulk:
-1. Navigate to the admin interface
-2. Click on "Bulk Upload" in the Users section
-3. Download the template CSV file
-4. Fill in the student data
-5. Upload the completed CSV file
-
-## Student Enrollment Management
-
-The system provides a comprehensive interface for managing student enrollments:
-
-1. Course Capacity Tracking:
-   - Real-time display of total capacity
-   - Current enrollment count
-   - Available spots calculation
-
-2. Student Filtering:
-   - Filter by grade level
-   - Search by student name
-   - View available vs. enrolled students
-
-3. Enrollment Actions:
-   - Select and add multiple students at once
-   - Remove individual students
-   - Remove all enrolled students
-   - Automatic validation against course capacity
-
 ## Configuration
 
-The scheduling system supports various configuration options through the admin interface:
-- Sibling separation preferences
-- Student group separation
-- Elective grouping options
-- Course type scheduling preferences
-- Course capacity settings
-- Grade level restrictions
+### Environment Variables
+Create a `.env` file in the project root with the following variables:
+```
+DEBUG=True
+SECRET_KEY=your-secret-key
+DATABASE_URL=sqlite:///db.sqlite3
+ALLOWED_HOSTS=localhost,127.0.0.1
+```
 
-## Copyright
+### Database Configuration
+The system uses SQLite by default. For production, configure PostgreSQL in settings.py:
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'your_db_name',
+        'USER': 'your_db_user',
+        'PASSWORD': 'your_db_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+```
 
-Copyright (c) 2024 Brian Zollinhofer. All Rights Reserved.
+## Usage
 
-This software is proprietary and confidential. No part of this software may be reproduced, distributed, or transmitted in any form or by any means without the prior written permission of Brian Zollinhofer.
+### 1. Initial Setup
+1. Log in to the admin interface at `/admin`
+2. Import or create periods
+3. Set up rooms and their capacities
+4. Import or create courses
+5. Import or create student and teacher data
+
+### 2. Course Configuration
+1. Define course types (required/elective)
+2. Set up prerequisites
+3. Configure grade level restrictions
+4. Set course capacities
+
+### 3. Schedule Generation
+1. Configure scheduling parameters
+2. Generate initial schedule
+3. Review and resolve conflicts
+4. Finalize and publish schedule
+
+### 4. Data Import Formats
+
+#### Student Import (CSV)
+```csv
+first_name,last_name,email,grade_level
+John,Doe,john.doe@example.com,9
+Jane,Smith,jane.smith@example.com,10
+```
+
+#### Course Import (CSV)
+```csv
+name,course_type,grade_level,max_capacity
+Algebra I,REQUIRED,9,30
+Art History,ELECTIVE,10,25
+```
+
+#### Period Import (CSV)
+```csv
+name,start_time,end_time
+1,08:00,08:45
+2,08:50,09:35
+```
+
+## API Documentation
+
+### Period Management
+```python
+GET /api/periods/ - List all periods
+POST /api/periods/ - Create new period
+GET /api/periods/{id}/ - Get period details
+PUT /api/periods/{id}/ - Update period
+DELETE /api/periods/{id}/ - Delete period
+```
+
+### Room Management
+```python
+GET /api/rooms/ - List all rooms
+POST /api/rooms/ - Create new room
+GET /api/rooms/{id}/ - Get room details
+PUT /api/rooms/{id}/ - Update room
+DELETE /api/rooms/{id}/ - Delete room
+```
+
+### Section Management
+```python
+GET /api/sections/ - List all sections
+POST /api/sections/ - Create new section
+GET /api/sections/{id}/ - Get section details
+PUT /api/sections/{id}/ - Update section
+DELETE /api/sections/{id}/ - Delete section
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Contributing
+## Acknowledgments
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- Django framework
+- Python community
+- Contributors and testers
+
+## Version History
+
+### v0.1.0
+- Initial release
+- Core scheduling functionality
+- Optimized views and models
+- Admin interface improvements
+- Data import/export capabilities
+- Caching and performance optimizations

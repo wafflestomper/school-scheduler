@@ -1,1 +1,1 @@
-web: gunicorn --chdir /opt/render/project/src scheduler_config.wsgi:application --log-file - 
+web: gunicorn scheduler_config.wsgi:application --log-file logs/gunicorn.log --log-level debug 

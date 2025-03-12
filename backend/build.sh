@@ -2,11 +2,11 @@
 # exit on error
 set -o errexit
 
+# Create logs directory
+mkdir -p logs
+
 echo "Installing dependencies..."
 pip install -r requirements.txt
-
-echo "Setting up project directory..."
-export PYTHONPATH=/opt/render/project/src:$PYTHONPATH
 
 echo "Running migrations..."
 python manage.py migrate

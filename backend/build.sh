@@ -10,7 +10,6 @@ echo "Installing dependencies..."
 pip install -r requirements.txt
 
 echo "Setting up environment..."
-export PYTHONPATH=/opt/render/project/src/backend:$PYTHONPATH
 export DJANGO_SETTINGS_MODULE=scheduler_config.settings
 
 echo "Running migrations..."

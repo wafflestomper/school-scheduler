@@ -5,7 +5,7 @@ services:
     region: ohio
     plan: free
     buildCommand: cd backend && ./build.sh
-    startCommand: cd backend && gunicorn -c gunicorn_config.py
+    startCommand: gunicorn app:app --bind=0.0.0.0:$PORT --workers 4 --log-file backend/logs/gunicorn.log --log-level debug
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -20,7 +20,7 @@ services:
       - key: ALLOWED_HOSTS
         value: .onrender.com
       - key: PYTHONPATH
-        value: /opt/render/project/src/backend
+        value: .
       - key: PORT
         value: 10000
       - key: DJANGO_SETTINGS_MODULE

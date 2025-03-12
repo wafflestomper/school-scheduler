@@ -17,9 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.views.generic.base import RedirectView
+from scheduler.views.bulk_upload_views import BulkUserUploadView
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('', RedirectView.as_view(url='/admin/', permanent=True), name='index'),
     path('admin/', admin.site.urls),
     path('scheduler/', include('scheduler.urls')),  # Include scheduler URLs with prefix
-]
+    path('bulk-upload/users/', BulkUserUploadView.as_view(), name='bulk-user-upload'),
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

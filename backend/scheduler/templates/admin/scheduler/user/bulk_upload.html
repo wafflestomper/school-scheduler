@@ -1,0 +1,34 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Bulk Upload Users</h1>
+    <div class="module">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-row">
+                <div>
+                    <label for="csv_file">CSV File:</label>
+                    <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+                </div>
+            </div>
+            <div class="submit-row">
+                <input type="submit" value="Upload" class="default">
+                <a href="{% url 'admin:scheduler_user_changelist' %}" class="button">Back to Users</a>
+            </div>
+        </form>
+        <div class="help">
+            <h3>CSV Format:</h3>
+            <p>Your CSV file should include the following columns:</p>
+            <ul>
+                <li><strong>username</strong> (required)</li>
+                <li><strong>email</strong> (optional)</li>
+                <li><strong>first_name</strong> (optional)</li>
+                <li><strong>last_name</strong> (optional)</li>
+                <li><strong>role</strong> (optional, defaults to 'student')</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,19 +1,4 @@
-.cancel-link {
-    background: #ba2121;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 4px;
-    color: #fff;
-    cursor: pointer;
-    float: right;
-    font-size: 13px;
-    font-weight: 400;
-    margin: 0 0 0 8px;
-    text-decoration: none;
-}
-
-.cancel-link:hover,
-.cancel-link:active {
-    background: #a41515;
-    color: #fff;
+/* Custom admin styles */
+.object-tools li a.addlink {
+    margin-right: 8px;
 } 

@@ -1,6 +1,0 @@
-username,email,first_name,last_name,role,grade_level,password
-jsmith,john@example.com,John,Smith,TEACHER,,password123
-mwilson,mary@example.com,Mary,Wilson,TEACHER,,password123
-awhite,amy@example.com,Amy,White,STUDENT,9,password123
-bjones,bob@example.com,Bob,Jones,STUDENT,9,password123
-clee,chris@example.com,Chris,Lee,STUDENT,10,password123

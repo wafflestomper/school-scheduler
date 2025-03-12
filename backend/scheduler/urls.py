@@ -1,7 +1,8 @@
 from django.urls import path
-from . import views
+from .views.user_views import bulk_upload_users
+
+app_name = 'api'
 
 urlpatterns = [
-    path('upload-csv/', views.upload_csv, name='upload_csv'),
-    path('upload/', views.upload_page, name='upload_page'),
+    path('bulk-upload-users/', bulk_upload_users, name='bulk_upload_users'),
 ]

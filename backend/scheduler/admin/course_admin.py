@@ -3,7 +3,7 @@ from django.http import JsonResponse
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
-from ..models import Course, User
+from ..models import Course, User, CourseTypeConfiguration
 import json
 
 @admin.register(Course)
@@ -11,7 +11,18 @@ class CourseAdmin(admin.ModelAdmin):
     list_display = ('name', 'code', 'course_type', 'duration', 'num_sections', 'max_students_per_section', 'grade_level', 'get_student_count', 'get_available_space')
     list_filter = ('course_type', 'duration', 'grade_level')
     search_fields = ('name', 'code', 'description')
-    filter_horizontal = ('students',)
+    exclude = ('students',)
+    fieldsets = (
+        ('Course Information', {
+            'fields': ('name', 'code', 'description')
+        }),
+        ('Course Settings', {
+            'fields': ('course_type', 'duration', 'grade_level')
+        }),
+        ('Capacity Settings', {
+            'fields': ('num_sections', 'max_students_per_section')
+        }),
+    )
     
     def get_student_count(self, obj):
         return obj.students.count()
@@ -29,80 +40,178 @@ class CourseAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path(
-                'api/courses/<int:course_id>/available-students/',
-                self.admin_site.admin_view(self.get_available_students),
-                name='course-available-students',
+                '<int:course_id>/registered-students/',
+                self.admin_site.admin_view(self.registered_students_view),
+                name='course_registered_students',
             ),
             path(
-                'api/courses/<int:course_id>/registered-students/',
-                self.admin_site.admin_view(self.get_registered_students),
-                name='course-registered-students',
+                '<int:course_id>/available-students/',
+                self.admin_site.admin_view(self.available_students_view),
+                name='course_available_students',
             ),
             path(
-                'api/courses/<int:course_id>/add-students/',
-                self.admin_site.admin_view(self.add_students),
-                name='course-add-students',
+                '<int:course_id>/add-student/<int:student_id>/',
+                self.admin_site.admin_view(self.add_student_view),
+                name='course_add_student',
             ),
             path(
-                'api/courses/<int:course_id>/remove-student/<int:student_id>/',
-                self.admin_site.admin_view(self.remove_student),
-                name='course-remove-student',
+                '<int:course_id>/remove-student/<int:student_id>/',
+                self.admin_site.admin_view(self.remove_student_view),
+                name='course_remove_student',
+            ),
+            path(
+                '<int:course_id>/remove-all-students/',
+                self.admin_site.admin_view(self.remove_all_students_view),
+                name='course_remove_all_students',
+            ),
+            path(
+                '<int:course_id>/add-students/',
+                self.admin_site.admin_view(self.add_students_view),
+                name='course_add_students',
             ),
         ]
         return custom_urls + urls
     
-    def get_available_students(self, request, course_id):
-        """Return list of students available for registration"""
-        course = Course.objects.get(id=course_id)
-        registered_ids = course.students.values_list('id', flat=True)
+    def registered_students_view(self, request, course_id):
+        course = self.get_object(request, course_id)
+        if course is None:
+            return JsonResponse({'error': 'Course not found'}, status=404)
         
-        # Get all students who aren't registered in this course
-        students = User.objects.filter(
-            role='STUDENT'
-        ).exclude(
-            id__in=registered_ids
-        ).values('id', 'first_name', 'last_name', 'grade_level')
-        
-        return JsonResponse(list(students), safe=False)
-    
-    def get_registered_students(self, request, course_id):
-        """Return list of registered students"""
-        course = Course.objects.get(id=course_id)
         students = course.students.values('id', 'first_name', 'last_name', 'grade_level')
-        return JsonResponse(list(students), safe=False)
-    
-    def add_students(self, request, course_id):
-        """Add multiple students to a course"""
+        return JsonResponse({
+            'students': list(students),
+            'course_grade': course.grade_level
+        })
+
+    def available_students_view(self, request, course_id):
+        course = self.get_object(request, course_id)
+        if course is None:
+            return JsonResponse({'error': 'Course not found'}, status=404)
+        
+        config = CourseTypeConfiguration.objects.filter(active=True).first()
+        
+        # Get students not in this course
+        registered_ids = course.students.values_list('id', flat=True)
+        students_query = User.objects.filter(role='STUDENT').exclude(id__in=registered_ids)
+        
+        # Apply grade level restrictions if configured
+        if config and config.enforce_grade_levels and not config.allow_mixed_levels:
+            students_query = students_query.filter(grade_level=course.grade_level)
+        
+        students = students_query.values('id', 'first_name', 'last_name', 'grade_level')
+        
+        # Get available grades
+        available_grades_query = User.objects.filter(role='STUDENT')
+        if config and config.enforce_grade_levels and not config.allow_mixed_levels:
+            available_grades_query = available_grades_query.filter(grade_level=course.grade_level)
+        
+        available_grades = list(available_grades_query.values_list(
+            'grade_level', flat=True
+        ).distinct().order_by('grade_level'))
+        
+        return JsonResponse({
+            'students': list(students),
+            'course_grade': course.grade_level,
+            'available_grades': available_grades,
+            'enforce_grade_levels': config.enforce_grade_levels if config else False,
+            'allow_mixed_levels': config.allow_mixed_levels if config else True
+        })
+
+    def add_student_view(self, request, course_id, student_id):
         if request.method != 'POST':
             return JsonResponse({'error': 'Method not allowed'}, status=405)
         
-        course = Course.objects.get(id=course_id)
-        data = json.loads(request.body)
-        student_ids = data.get('student_ids', [])
+        course = self.get_object(request, course_id)
+        if course is None:
+            return JsonResponse({'error': 'Course not found'}, status=404)
         
-        # Check if adding these students would exceed the course capacity
-        if not course.has_space_for_students(len(student_ids)):
-            return JsonResponse({'error': 'Exceeds course capacity'}, status=400)
-        
-        # Add students
-        students = User.objects.filter(id__in=student_ids, role='STUDENT')
-        course.students.add(*students)
-        
-        return JsonResponse({'status': 'success'})
-    
-    def remove_student(self, request, course_id, student_id):
-        """Remove a student from a course"""
+        try:
+            student = User.objects.get(id=student_id, role='STUDENT')
+            course.students.add(student)
+            return JsonResponse({'status': 'success'})
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Student not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    def remove_student_view(self, request, course_id, student_id):
         if request.method != 'POST':
             return JsonResponse({'error': 'Method not allowed'}, status=405)
         
-        course = Course.objects.get(id=course_id)
-        course.students.remove(student_id)
+        course = self.get_object(request, course_id)
+        if course is None:
+            return JsonResponse({'error': 'Course not found'}, status=404)
         
-        return JsonResponse({'status': 'success'})
-    
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        if obj:
+        try:
+            student = User.objects.get(id=student_id, role='STUDENT')
+            course.students.remove(student)
+            return JsonResponse({'status': 'success'})
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'Student not found'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    def remove_all_students_view(self, request, course_id):
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+        course = self.get_object(request, course_id)
+        if course is None:
+            return JsonResponse({'error': 'Course not found'}, status=404)
+        
+        try:
+            course.students.clear()
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    def add_students_view(self, request, course_id):
+        if request.method != 'POST':
+            return JsonResponse({'error': 'Method not allowed'}, status=405)
+        
+        course = self.get_object(request, course_id)
+        if course is None:
+            return JsonResponse({'error': 'Course not found'}, status=404)
+        
+        try:
+            data = json.loads(request.body)
+            student_ids = data.get('student_ids', [])
+            
+            if not student_ids:
+                return JsonResponse({'error': 'No students specified'}, status=400)
+            
+            if not course.has_space_for_students(len(student_ids)):
+                return JsonResponse(
+                    {'error': 'Adding these students would exceed course capacity'},
+                    status=400
+                )
+            
+            # Get students and validate grade levels if configured
+            config = CourseTypeConfiguration.objects.filter(active=True).first()
+            students = User.objects.filter(id__in=student_ids, role='STUDENT')
+            
+            if not students.exists():
+                return JsonResponse({'error': 'No valid students found'}, status=400)
+            
+            if config and config.enforce_grade_levels and not config.allow_mixed_levels:
+                invalid_grade_students = students.exclude(grade_level=course.grade_level)
+                if invalid_grade_students.exists():
+                    return JsonResponse(
+                        {'error': 'Some students are not in the correct grade level for this course'},
+                        status=400
+                    )
+            
+            course.students.add(*students)
+            return JsonResponse({'status': 'success'})
+            
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    def change_view(self, request, object_id, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        if object_id:
             # Get unique grade levels for the grade filter
             grade_levels = list(User.objects.filter(
                 role='STUDENT'
@@ -110,14 +219,10 @@ class CourseAdmin(admin.ModelAdmin):
                 'grade_level', flat=True
             ).distinct().order_by('grade_level'))
             
-            # Add to admin context
-            request.available_grades = grade_levels
-        return form
-
-    def change_view(self, request, object_id, form_url='', extra_context=None):
-        extra_context = extra_context or {}
-        if object_id:
-            extra_context['available_grades'] = getattr(request, 'available_grades', [])
+            extra_context.update({
+                'available_grades': grade_levels,
+                'show_student_management': True  # Add this flag
+            })
         return super().change_view(request, object_id, form_url, extra_context)
     
     class Media:

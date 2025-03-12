@@ -1,66 +1,17 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>CSV Upload</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        .upload-form {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-        }
-        .example {
-            background: #fff;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
-        .error {
-            color: red;
-            margin: 10px 0;
-        }
-        .success {
-            color: green;
-            margin: 10px 0;
-        }
-    </style>
-</head>
-<body>
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div id="content-main">
     <h1>CSV Upload Tool</h1>
     
-    <div class="upload-form">
+    <div class="module">
         <h2>Upload CSV File</h2>
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <p>
-                <label for="type">Select data type:</label><br>
-                <select name="type" id="type" required>
-                    <option value="users">Users</option>
-                    <option value="courses">Courses</option>
-                    <option value="periods">Periods</option>
-                    <option value="rooms">Rooms</option>
-                </select>
-            </p>
-            <p>
-                <label for="file">Choose CSV file:</label><br>
-                <input type="file" name="file" id="file" accept=".csv" required>
-            </p>
-            <button type="submit">Upload</button>
-        </form>
-        
         {% if message %}
-            <p class="success">{{ message }}</p>
+            <p class="success-message">{{ message }}</p>
         {% endif %}
         
         {% if errors %}
-            <div class="error">
+            <div class="error-message">
                 <h3>Errors:</h3>
                 <ul>
                     {% for error in errors %}
@@ -69,36 +20,87 @@
                 </ul>
             </div>
         {% endif %}
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-row">
+                <label for="type">Select data type:</label>
+                <select name="type" id="type" required>
+                    <option value="users">Users</option>
+                    <option value="courses">Courses</option>
+                    <option value="periods">Periods</option>
+                    <option value="rooms">Rooms</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label for="file">Choose CSV file:</label>
+                <input type="file" name="file" id="file" accept=".csv" required>
+            </div>
+            <div class="submit-row">
+                <input type="submit" value="Upload" class="default">
+            </div>
+        </form>
     </div>
 
-    <h2>Example CSV Formats</h2>
-    
-    <div class="example">
-        <h3>Users (users.csv)</h3>
-        <pre>username,email,first_name,last_name,role,grade_level,password
-jsmith,john@example.com,John,Smith,TEACHER,,password123
-awhite,amy@example.com,Amy,White,STUDENT,9,password123</pre>
-    </div>
+    <div class="module">
+        <h2>Example CSV Formats</h2>
+        
+        <div class="example">
+            <h3>Periods (periods.csv)</h3>
+            <pre>name,start_time,end_time
+1st Period,08:00,09:00
+2nd Period,09:00,10:00</pre>
+        </div>
 
-    <div class="example">
-        <h3>Courses (courses.csv)</h3>
-        <pre>name,description,teacher_username,max_students,grade_level
-Algebra I,Basic algebra course,jsmith,30,9
-Biology,Introduction to biology,jsmith,25,9</pre>
-    </div>
-
-    <div class="example">
-        <h3>Periods (periods.csv)</h3>
-        <pre>name,start_time,end_time
-1st Period,08:00,08:50
-2nd Period,09:00,09:50</pre>
-    </div>
-
-    <div class="example">
-        <h3>Rooms (rooms.csv)</h3>
-        <pre>name,capacity,description
+        <div class="example">
+            <h3>Rooms (rooms.csv)</h3>
+            <pre>name,capacity,description
 Room 101,30,Math classroom
 Room 102,25,Science lab</pre>
+        </div>
     </div>
-</body>
-</html>
+</div>
+
+<style>
+    .form-row {
+        margin: 20px 0;
+    }
+    .form-row label {
+        display: block;
+        margin-bottom: 5px;
+    }
+    .form-row select,
+    .form-row input[type="file"] {
+        padding: 5px;
+        width: 100%;
+        max-width: 400px;
+    }
+    .example {
+        background: #fff;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .example pre {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        overflow-x: auto;
+    }
+    .success-message {
+        background-color: #dff0d8;
+        color: #3c763d;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    .error-message {
+        background-color: #f2dede;
+        color: #a94442;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+</style>
+{% endblock %}

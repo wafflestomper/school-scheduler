@@ -1,28 +1,90 @@
-.submit-row .cancel-link {
-    background: #ba2121;
-    padding: 10px 15px;
-    border: none;
-    border-radius: 4px;
-    color: #fff;
-    cursor: pointer;
-    float: right;
-    font-size: 13px;
-    font-weight: 400;
-    margin: 0 0 0 8px;
-    text-decoration: none;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    min-height: 35px !important;
-    line-height: 1;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+/* Custom admin styles */
+.object-tools li a.addlink {
+    margin-right: 8px;
+} 
+
+/* Custom styles for the admin interface */
+
+/* Student assignment section */
+.student-assignment {
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-.submit-row .cancel-link:hover,
-.submit-row .cancel-link:active {
-    background: #a41515;
+.student-list {
+    background: #fff;
+}
+
+.student-item {
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.student-item:last-child {
+    border-bottom: none;
+}
+
+.student-actions button {
+    margin-right: 10px;
+    padding: 8px 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+}
+
+.student-actions button:hover {
+    background: #f5f5f5;
+}
+
+.student-actions button.default {
+    background: #417690;
+    border-color: #417690;
     color: #fff;
-    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.student-actions button.default:hover {
+    background: #205067;
+}
+
+.remove-student {
+    padding: 4px 8px;
+    border: 1px solid #ba2121;
+    border-radius: 3px;
+    background: #fff;
+    color: #ba2121;
+    cursor: pointer;
+}
+
+.remove-student:hover {
+    background: #ba2121;
+    color: #fff;
+}
+
+/* Filters */
+.student-filters select,
+.student-filters input {
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-left: 5px;
+}
+
+.student-filters input:focus,
+.student-filters select:focus {
+    border-color: #999;
+    outline: none;
+}
+
+/* Responsive design */
+@media (max-width: 767px) {
+    .filter-group {
+        display: block;
+        margin-bottom: 10px;
+    }
+    
+    .student-actions button {
+        display: block;
+        width: 100%;
+        margin-bottom: 5px;
+    }
 } 

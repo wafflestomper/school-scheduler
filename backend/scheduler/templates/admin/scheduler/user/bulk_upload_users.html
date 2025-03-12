@@ -1,0 +1,105 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Bulk Upload Users</h1>
+
+    {% if messages %}
+    <ul class="messagelist">
+        {% for message in messages %}
+        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <div class="module">
+        <h2>Upload CSV File</h2>
+        <div class="form-row">
+            <p>
+                Please upload a CSV file with the following headers:
+                <code>user_id, username, email, first_name, last_name, grade_level, gender, role</code>
+            </p>
+            <p>
+                <a href="{% static 'example_users.csv' %}" class="button" download>Download Example CSV Template</a>
+            </p>
+            <ul>
+                <li><strong>user_id:</strong> Required, unique identifier for the user (e.g., 1001)</li>
+                <li><strong>username:</strong> Required, unique identifier for login (e.g., john.doe)</li>
+                <li><strong>email:</strong> Required, valid email address</li>
+                <li><strong>first_name:</strong> Optional, user's first name</li>
+                <li><strong>last_name:</strong> Optional, user's last name</li>
+                <li><strong>grade_level:</strong> Optional, integer value</li>
+                <li><strong>gender:</strong> Optional, 'M' or 'F'</li>
+                <li><strong>role:</strong> Required, must be one of: 'STUDENT', 'TEACHER', or 'ADMIN'</li>
+            </ul>
+        </div>
+
+        <form action="{% url 'bulk-user-upload' %}" method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-row">
+                <div>
+                    <label for="csv_file">Select CSV file:</label>
+                    <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+                </div>
+            </div>
+            <div class="submit-row">
+                <input type="submit" value="Upload" class="default">
+            </div>
+        </form>
+
+        <div class="form-row">
+            <h3>Example CSV Format:</h3>
+            <pre>user_id,username,email,first_name,last_name,grade_level,gender,role
+1001,john.doe,john.doe@example.com,John,Doe,7,M,STUDENT</pre>
+        </div>
+    </div>
+</div>
+
+<style>
+    .form-row {
+        margin: 20px 0;
+    }
+    .form-row pre {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        overflow-x: auto;
+    }
+    .messagelist {
+        margin: 0 0 20px 0;
+        padding: 0;
+    }
+    .messagelist li {
+        padding: 10px;
+        margin: 0 0 5px 0;
+        border-radius: 4px;
+        list-style: none;
+    }
+    .messagelist li.success {
+        background-color: #dff0d8;
+        color: #3c763d;
+    }
+    .messagelist li.error {
+        background-color: #f2dede;
+        color: #a94442;
+    }
+    code {
+        background-color: #f5f5f5;
+        padding: 2px 4px;
+        border-radius: 3px;
+    }
+    .button {
+        display: inline-block;
+        padding: 8px 16px;
+        margin: 10px 0;
+        background-color: #417690;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+    }
+    .button:hover {
+        background-color: #205067;
+    }
+</style>
+{% endblock %} 

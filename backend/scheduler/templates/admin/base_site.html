@@ -1,0 +1,46 @@
+{% extends "admin/base.html" %}
+
+{% block branding %}
+{{ block.super }}
+<div class="sidebar-section">
+    <h2>Data Management</h2>
+    <ul>
+        <li><a href="{% url 'scheduler:upload-page' %}" class="addlink">CSV Upload Tool</a></li>
+    </ul>
+</div>
+{% endblock %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    .sidebar-section {
+        margin: 20px 0;
+        padding: 10px;
+    }
+    .sidebar-section h2 {
+        font-size: 14px;
+        color: #fff;
+        margin: 0 0 10px 0;
+        font-weight: bold;
+    }
+    .sidebar-section ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .sidebar-section li {
+        padding: 5px 0;
+    }
+    .sidebar-section .addlink {
+        padding-left: 16px;
+        background: url(../img/icon-addlink.svg) 0 1px no-repeat;
+        color: #fff;
+        text-decoration: none;
+        display: block;
+    }
+    .sidebar-section .addlink:hover {
+        color: #79aec8;
+        text-decoration: underline;
+    }
+</style>
+{% endblock %} 

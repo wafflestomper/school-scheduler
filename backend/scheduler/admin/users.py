@@ -4,12 +4,12 @@ from ..models import User
 
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
-    list_display = ('username', 'email', 'first_name', 'last_name', 'role', 'grade_level', 'gender')
+    list_display = ('username', 'user_id', 'email', 'first_name', 'last_name', 'role', 'grade_level', 'gender')
     list_filter = ('role', 'grade_level', 'gender', 'is_staff', 'is_active')
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
         ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'gender')}),
-        ('School info', {'fields': ('role', 'grade_level')}),
+        ('School info', {'fields': ('role', 'user_id', 'grade_level')}),
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser',
                                   'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
@@ -17,8 +17,8 @@ class UserAdmin(BaseUserAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username', 'password1', 'password2', 'first_name', 'last_name', 'email', 'role', 'grade_level', 'gender'),
+            'fields': ('username', 'password1', 'password2', 'first_name', 'last_name', 'email', 'role', 'user_id', 'grade_level', 'gender'),
         }),
     )
-    search_fields = ('username', 'first_name', 'last_name', 'email')
+    search_fields = ('username', 'user_id', 'first_name', 'last_name', 'email')
     ordering = ('username',) 

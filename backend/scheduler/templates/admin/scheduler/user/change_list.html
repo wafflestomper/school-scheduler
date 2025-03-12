@@ -4,7 +4,7 @@
 {% block object-tools-items %}
     {% if has_add_permission %}
         <li>
-            <a href="{% url 'api:bulk_upload_users' %}" class="addlink">
+            <a href="/bulk-upload/users/" class="addlink">
                 {% blocktranslate %}Bulk Upload Users{% endblocktranslate %}
             </a>
         </li>

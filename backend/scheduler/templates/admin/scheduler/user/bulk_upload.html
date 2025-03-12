@@ -5,6 +5,10 @@
 <div id="content-main">
     <h1>Bulk Upload Users</h1>
     <div class="module">
+        <div class="form-row">
+            <p>Download a template to get started:</p>
+            <a href="/bulk-upload/template/" class="button" style="margin-bottom: 20px;">Download CSV Template</a>
+        </div>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <div class="form-row">
@@ -22,11 +26,24 @@
             <h3>CSV Format:</h3>
             <p>Your CSV file should include the following columns:</p>
             <ul>
-                <li><strong>username</strong> (required)</li>
-                <li><strong>email</strong> (optional)</li>
-                <li><strong>first_name</strong> (optional)</li>
-                <li><strong>last_name</strong> (optional)</li>
-                <li><strong>role</strong> (optional, defaults to 'student')</li>
+                <li><strong>username</strong> (required) - Unique username for the user</li>
+                <li><strong>user_id</strong> (required) - Unique identifier for all users</li>
+                <li><strong>email</strong> (optional) - Email address</li>
+                <li><strong>first_name</strong> (optional) - First name</li>
+                <li><strong>last_name</strong> (optional) - Last name</li>
+                <li><strong>role</strong> (optional, defaults to 'student') - One of: student, teacher, admin</li>
+                <li><strong>grade</strong> (optional) - Grade level (for students)</li>
+                <li><strong>gender</strong> (optional) - M or F</li>
+            </ul>
+            <h3>Example:</h3>
+            <pre>username,user_id,email,first_name,last_name,role,grade,gender
+student1,S12345,student1@school.edu,John,Doe,student,7,M
+teacher1,T789,teacher1@school.edu,Jane,Smith,teacher,,F</pre>
+            <p><strong>Note:</strong> Common formats for User IDs:</p>
+            <ul>
+                <li>Students: S12345 (S followed by numbers)</li>
+                <li>Teachers: T789 (T followed by numbers)</li>
+                <li>Admins: A123 (A followed by numbers)</li>
             </ul>
         </div>
     </div>

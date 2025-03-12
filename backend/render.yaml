@@ -3,7 +3,7 @@ services:
     name: school-scheduler
     env: python
     buildCommand: ./build.sh
-    startCommand: gunicorn scheduler_config.wsgi:application
+    startCommand: gunicorn --bind=0.0.0.0:$PORT scheduler_config.wsgi:application --log-file logs/gunicorn.log --log-level debug --chdir /opt/render/project/src
     envVars:
       - key: PYTHON_VERSION
         value: 3.9.0
@@ -18,11 +18,13 @@ services:
       - key: ALLOWED_HOSTS
         value: .onrender.com
       - key: PYTHONPATH
-        value: .
+        value: /opt/render/project/src
       - key: PORT
         value: 8000
       - key: WEB_CONCURRENCY
         value: 4
+      - key: DJANGO_SETTINGS_MODULE
+        value: scheduler_config.settings
 
 databases:
   - name: school-scheduler-db

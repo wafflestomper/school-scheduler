@@ -1,1 +1,1 @@
-web: gunicorn scheduler_config.wsgi:application --log-file logs/gunicorn.log --log-level debug 
+web: gunicorn --bind=0.0.0.0:$PORT scheduler_config.wsgi:application --log-file logs/gunicorn.log --log-level debug --chdir /opt/render/project/src 

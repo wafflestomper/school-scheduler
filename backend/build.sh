@@ -2,11 +2,16 @@
 # exit on error
 set -o errexit
 
-# Create logs directory
+echo "Setting up directories..."
 mkdir -p logs
+mkdir -p staticfiles
 
 echo "Installing dependencies..."
 pip install -r requirements.txt
+
+echo "Setting up environment..."
+export PYTHONPATH=/opt/render/project/src:$PYTHONPATH
+export DJANGO_SETTINGS_MODULE=scheduler_config.settings
 
 echo "Running migrations..."
 python manage.py migrate

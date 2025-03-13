@@ -3,15 +3,21 @@ from django.http import JsonResponse
 from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.shortcuts import render
 from ..models import Course, User, CourseTypeConfiguration
+from .distribution_admin import CourseDistributionMixin
 import json
 
 @admin.register(Course)
-class CourseAdmin(admin.ModelAdmin):
+class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
     list_display = ('name', 'code', 'course_type', 'duration', 'num_sections', 'max_students_per_section', 'grade_level', 'get_student_count', 'get_available_space')
     list_filter = ('course_type', 'duration', 'grade_level')
     search_fields = ('name', 'code', 'description')
     exclude = ('students',)
+    
+    # Use our custom template for the course list
+    change_list_template = 'admin/scheduler/course/change_list.html'
+    
     fieldsets = (
         ('Course Information', {
             'fields': ('name', 'code', 'description')
@@ -39,6 +45,36 @@ class CourseAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
+            path(
+                'distribution/',
+                self.admin_site.admin_view(self.distribution_view),
+                name='scheduler_course_distribution'
+            ),
+            path(
+                'api/distribute/<int:course_id>/',
+                self.admin_site.admin_view(self.distribute_course),
+                name='distribute_course'
+            ),
+            path(
+                'api/distribute-all/',
+                self.admin_site.admin_view(self.distribute_all),
+                name='distribute_all'
+            ),
+            path(
+                'api/clear-distribution/<int:course_id>/',
+                self.admin_site.admin_view(self.clear_distribution),
+                name='clear_distribution'
+            ),
+            path(
+                'api/clear-all-distributions/',
+                self.admin_site.admin_view(self.clear_all),
+                name='clear_all'
+            ),
+            path(
+                'api/course-distribution/<int:course_id>/',
+                self.admin_site.admin_view(self.get_distribution),
+                name='get_distribution'
+            ),
             path(
                 '<int:course_id>/registered-students/',
                 self.admin_site.admin_view(self.registered_students_view),
@@ -71,7 +107,15 @@ class CourseAdmin(admin.ModelAdmin):
             ),
         ]
         return custom_urls + urls
-    
+
+    def changelist_view(self, request, extra_context=None):
+        """Override changelist view to add distribution button"""
+        extra_context = extra_context or {}
+        extra_context.update({
+            'show_distribution_button': True
+        })
+        return super().changelist_view(request, extra_context)
+
     def registered_students_view(self, request, course_id):
         course = self.get_object(request, course_id)
         if course is None:
@@ -221,10 +265,10 @@ class CourseAdmin(admin.ModelAdmin):
             
             extra_context.update({
                 'available_grades': grade_levels,
-                'show_student_management': True  # Add this flag
+                'show_student_management': True
             })
         return super().change_view(request, object_id, form_url, extra_context)
-    
+
     class Media:
         css = {
             'all': ('admin/css/custom_admin.css',)

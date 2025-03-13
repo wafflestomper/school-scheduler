@@ -5,6 +5,7 @@ from .section import Section
 from .period import Period
 from .facilities import Room
 from .groups import StudentGroup, SiblingGroup
+from .scheduling import Schedule, StudentPreference
 from .configuration import (
     SchedulingConfiguration,
     SiblingConfiguration,
@@ -22,6 +23,8 @@ __all__ = [
     'Room',
     'StudentGroup',
     'SiblingGroup',
+    'Schedule',
+    'StudentPreference',
     'SchedulingConfiguration',
     'SiblingConfiguration',
     'StudentGroupConfiguration',

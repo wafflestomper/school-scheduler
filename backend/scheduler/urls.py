@@ -1,27 +1,21 @@
 from django.urls import path
-from .views import user_views
+from scheduler.views import user_views
 from .views.course_views import CourseStudentView
+from .views.upload_views import upload_page, upload_csv
+from .views import (
+    scheduling_views,
+    course_views,
+    room_views,
+    period_views,
+    configuration_views,
+    group_views
+)
 
 app_name = 'scheduler'
 
 urlpatterns = [
-    path('bulk-upload/', user_views.bulk_upload_users, name='bulk-upload'),
-    path('bulk-upload/template/', user_views.download_user_template, name='download-template'),
-    
-    # Course student management API endpoints
-    path('api/courses/<int:course_id>/available-students/',
-         CourseStudentView.as_view(),
-         name='course-available-students'),
-    path('api/courses/<int:course_id>/registered-students/',
-         CourseStudentView.as_view(),
-         name='course-registered-students'),
-    path('api/courses/<int:course_id>/add-students/',
-         CourseStudentView.as_view(),
-         name='course-add-students'),
-    path('api/courses/<int:course_id>/remove-student/<int:student_id>/',
-         CourseStudentView.as_view(),
-         name='course-remove-student'),
-    path('api/courses/<int:course_id>/remove-all-students/',
-         CourseStudentView.as_view(),
-         name='course-remove-all-students'),
+    # Other URLs...
+    path('upload/', upload_page, name='upload-page'),
+    path('api/upload/', upload_csv, name='upload-csv'),
+    path('pe6-distribution/', scheduling_views.PE6DistributionView.as_view(), name='pe6_distribution'),
 ]

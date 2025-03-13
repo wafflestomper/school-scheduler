@@ -39,7 +39,8 @@ def handle_course_csv(csv_file):
     """
     Handle CSV upload for courses
     Expected CSV format:
-    name,description,teacher_username,max_students,grade_level
+    name,code,description,teacher_username,max_students,grade_level,num_sections,duration
+    Note: max_students represents total course capacity, will be divided by num_sections
     """
     decoded_file = csv_file.read().decode('utf-8')
     io_string = io.StringIO(decoded_file)
@@ -50,18 +51,32 @@ def handle_course_csv(csv_file):
     
     for row in reader:
         try:
-            teacher = User.objects.get(username=row['teacher_username'], role='TEACHER')
+            # Calculate per-section capacity
+            total_students = int(row['max_students'])
+            num_sections = int(row.get('num_sections', 1))
+            max_per_section = total_students // num_sections
+            
+            # Create course without teacher first
             course = Course(
                 name=row['name'],
+                code=row.get('code'),  # Optional field
                 description=row['description'],
-                teacher=teacher,
-                max_students=int(row['max_students']),
-                grade_level=int(row['grade_level'])
+                max_students_per_section=max_per_section,
+                grade_level=int(row['grade_level']),
+                num_sections=num_sections,
+                duration=row.get('duration', 'YEAR').upper()  # Default to YEAR if not specified
             )
+            
+            # Only try to set teacher if username is provided
+            if row.get('teacher_username'):
+                try:
+                    teacher = User.objects.get(username=row['teacher_username'], role='TEACHER')
+                    course.teacher = teacher
+                except User.DoesNotExist:
+                    errors.append(f"Warning on row {reader.line_num}: Teacher {row['teacher_username']} not found - course created without teacher")
+            
             course.save()
             created_count += 1
-        except User.DoesNotExist:
-            errors.append(f"Error on row {reader.line_num}: Teacher {row['teacher_username']} not found")
         except Exception as e:
             errors.append(f"Error on row {reader.line_num}: {str(e)}")
     

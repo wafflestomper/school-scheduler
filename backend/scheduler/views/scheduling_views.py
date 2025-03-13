@@ -9,11 +9,12 @@ from django.db.models import Q, Count, Prefetch
 from django.core.cache import cache
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from ..models import Schedule, StudentPreference, Course, User, Period, Room
+from ..models import Schedule, StudentPreference, Course, User, Period, Room, Section
 import json
 import logging
 from functools import wraps
 from time import time
+from ..scheduling.basic_scheduler import distribute_pe6_students
 
 logger = logging.getLogger(__name__)
 
@@ -406,4 +407,47 @@ class StudentPreferenceView(View):
             })
             
         except ValidationError as e:
-            return JsonResponse({'error': str(e)}, status=400) 
+            return JsonResponse({'error': str(e)}, status=400)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class PE6DistributionView(View):
+    def post(self, request):
+        """
+        Endpoint to trigger PE6 student distribution across sections.
+        """
+        try:
+            results = distribute_pe6_students()
+            return JsonResponse(results)
+        except Exception as e:
+            logger.error(f"Error in PE6DistributionView: {str(e)}")
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+
+    def get(self, request):
+        """
+        Returns current PE6 distribution status.
+        """
+        try:
+            pe6_course = Course.objects.filter(code='PE6').first()
+            if not pe6_course:
+                return JsonResponse({'error': 'PE6 course not found'}, status=404)
+
+            sections = Section.objects.filter(course=pe6_course)
+            distribution = [
+                {
+                    'section_name': section.name,
+                    'student_count': section.students.count(),
+                    'students': list(section.students.values('id', 'first_name', 'last_name'))
+                }
+                for section in sections
+            ]
+
+            return JsonResponse({
+                'course_name': pe6_course.name,
+                'total_students': pe6_course.students.count(),
+                'num_sections': sections.count(),
+                'distribution': distribution
+            })
+
+        except Exception as e:
+            logger.error(f"Error in PE6DistributionView GET: {str(e)}")
+            return JsonResponse({'error': str(e)}, status=500) 

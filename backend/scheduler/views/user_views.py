@@ -7,6 +7,7 @@ import csv
 import io
 from ..models import User
 from ..choices import UserRoles
+from django.contrib.auth.decorators import login_required
 
 def normalize_role(role):
     """Convert role to proper format regardless of input case"""

@@ -50,9 +50,9 @@ class Course(models.Model):
     course_type: str = models.CharField(
         max_length=10,
         choices=CourseTypes.CHOICES,
-        default=CourseTypes.REQUIRED,
+        default=CourseTypes.CORE,
         db_index=True,
-        help_text="Type of course (REQUIRED or ELECTIVE)"
+        help_text="Type of course (CORE or ELECTIVE)"
     )
     students = models.ManyToManyField(
         User,
@@ -121,7 +121,7 @@ class Course(models.Model):
     
     def is_required(self) -> bool:
         """Check if the course is required"""
-        return self.course_type == CourseTypes.REQUIRED
+        return self.course_type == CourseTypes.CORE
 
     def get_next_section_number(self) -> int:
         """Get the next available section number for this course"""

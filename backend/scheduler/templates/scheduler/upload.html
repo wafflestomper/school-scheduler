@@ -39,6 +39,7 @@
                 <input type="file" name="file" id="file" accept=".csv" required>
             </div>
             <div class="submit-row">
+                <p class="help-text">Note: If a record (e.g., section, course, etc.) already exists, it will be updated with the information from the uploaded file.</p>
                 <input type="submit" value="Upload" class="default">
             </div>
         </form>
@@ -81,7 +82,7 @@ Math 7,MATH7,7th Grade Math,jane.doe,60,7,2,YEAR</pre>
         <div class="example">
             <h3>Sections (sections.csv)</h3>
             <div class="example-header">
-                <a href="{% url 'serve_csv' filename='sections_sample.csv' %}" class="download-link">Download Sample</a>
+                <a href="{% url 'serve_csv' filename='sections.csv' %}" class="download-link">Download Sample</a>
             </div>
             <pre>course_code,section_number,teacher_username,period_name,room_name,max_size
 ENG7,1,john.smith,1st Period,Room 101,25
@@ -194,6 +195,11 @@ Room 102,25,Science lab</pre>
     }
     .example li {
         margin-bottom: 5px;
+    }
+    .help-text {
+        color: #666;
+        font-style: italic;
+        margin-bottom: 10px;
     }
 </style>
 {% endblock %}

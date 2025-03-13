@@ -26,6 +26,12 @@ class Section(models.Model):
         db_index=True,
         help_text="Generated section name (e.g., ENG7-1)"
     )
+    max_students: Optional[int] = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="Maximum number of students allowed in this section (optional, defaults to course max_students_per_section)"
+    )
     teacher: Optional[User] = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

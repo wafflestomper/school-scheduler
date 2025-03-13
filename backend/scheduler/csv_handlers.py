@@ -1,7 +1,7 @@
 import csv
 import io
 from django.contrib.auth.hashers import make_password
-from .models import User, Course, Period, Room
+from .models import User, Course, Period, Room, Section
 
 def handle_user_csv(csv_file):
     """
@@ -131,6 +131,127 @@ def handle_room_csv(csv_file):
             )
             room.save()
             created_count += 1
+        except Exception as e:
+            errors.append(f"Error on row {reader.line_num}: {str(e)}")
+    
+    return created_count, errors
+
+def handle_section_csv(csv_file):
+    """
+    Handle CSV upload for sections
+    Expected CSV format:
+    course_code,section_number,teacher_username,period_name,room_name,max_size
+    Note: teacher_username, period_name, room_name, and max_size are optional
+    """
+    decoded_file = csv_file.read().decode('utf-8')
+    io_string = io.StringIO(decoded_file)
+    reader = csv.DictReader(io_string)
+    
+    created_count = 0
+    errors = []
+    
+    def standardize_period_name(period_name):
+        """Standardize period name to format: 1st Period"""
+        if not period_name:
+            return None
+            
+        # Remove any existing "Period" or "period" and extra spaces
+        name = period_name.replace('Period', '').replace('period', '').strip()
+        
+        # Extract the number
+        import re
+        number = re.search(r'\d+', name)
+        if not number:
+            return None
+            
+        number = int(number.group())
+        
+        # Convert to ordinal
+        if str(number).endswith('1') and number != 11:
+            suffix = 'st'
+        elif str(number).endswith('2') and number != 12:
+            suffix = 'nd'
+        elif str(number).endswith('3') and number != 13:
+            suffix = 'rd'
+        else:
+            suffix = 'th'
+            
+        return f"{number}{suffix} Period"
+    
+    for row in reader:
+        try:
+            # Get the course
+            course = Course.objects.get(code=row['course_code'])
+            
+            # Validate section number
+            section_number = int(row['section_number'])
+            if section_number > course.num_sections:
+                raise ValueError(f"Section number {section_number} exceeds course's number of sections ({course.num_sections})")
+            
+            # Get teacher if provided
+            teacher = None
+            if row.get('teacher_username'):
+                try:
+                    teacher = User.objects.get(username=row['teacher_username'], role='TEACHER')
+                except User.DoesNotExist:
+                    errors.append(f"Warning on row {reader.line_num}: Teacher {row['teacher_username']} not found")
+            
+            # Get period if provided and standardize name
+            period = None
+            if row.get('period_name'):
+                standardized_period_name = standardize_period_name(row['period_name'])
+                if standardized_period_name:
+                    try:
+                        period = Period.objects.get(name=standardized_period_name)
+                    except Period.DoesNotExist:
+                        errors.append(f"Warning on row {reader.line_num}: Period {standardized_period_name} not found")
+            
+            # Get room if provided
+            room = None
+            if row.get('room_name'):
+                try:
+                    room = Room.objects.get(name=row['room_name'])
+                except Room.DoesNotExist:
+                    errors.append(f"Warning on row {reader.line_num}: Room {row['room_name']} not found")
+            
+            # Get max_size if provided
+            max_size = None
+            if row.get('max_size'):
+                try:
+                    max_size = int(row['max_size'])
+                    if max_size <= 0:
+                        raise ValueError("Max size must be positive")
+                except ValueError as e:
+                    errors.append(f"Warning on row {reader.line_num}: Invalid max_size value - {str(e)}")
+                    max_size = None
+            
+            # Create or update section
+            section, created = Section.objects.update_or_create(
+                course=course,
+                section_number=section_number,
+                defaults={
+                    'teacher': teacher,
+                    'period': period,
+                    'room': room,
+                    'name': f"{course.code}-{section_number}"
+                }
+            )
+            
+            # Update max_size if provided and valid
+            if max_size is not None:
+                if section.students.count() > max_size:
+                    errors.append(f"Warning on row {reader.line_num}: Current student count ({section.students.count()}) exceeds specified max_size ({max_size})")
+                else:
+                    section.max_students = max_size
+                    section.save()
+            
+            if created:
+                created_count += 1
+            
+        except Course.DoesNotExist:
+            errors.append(f"Error on row {reader.line_num}: Course with code {row['course_code']} not found")
+        except ValueError as e:
+            errors.append(f"Error on row {reader.line_num}: {str(e)}")
         except Exception as e:
             errors.append(f"Error on row {reader.line_num}: {str(e)}")
     

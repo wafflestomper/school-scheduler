@@ -8,7 +8,8 @@ from ..csv_handlers import (
     handle_user_csv,
     handle_course_csv,
     handle_period_csv,
-    handle_room_csv
+    handle_room_csv,
+    handle_section_csv
 )
 
 @login_required
@@ -26,6 +27,7 @@ def upload_page(request):
             handlers = {
                 'users': handle_user_csv,
                 'courses': handle_course_csv,
+                'sections': handle_section_csv,
                 'periods': handle_period_csv,
                 'rooms': handle_room_csv,
             }
@@ -58,6 +60,7 @@ def upload_csv(request):
     handlers = {
         'users': handle_user_csv,
         'courses': handle_course_csv,
+        'sections': handle_section_csv,
         'periods': handle_period_csv,
         'rooms': handle_room_csv,
     }

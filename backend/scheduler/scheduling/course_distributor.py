@@ -82,8 +82,8 @@ def get_grade_level_stats(grade_level: int) -> Dict[str, any]:
     """
     total_students = User.objects.filter(grade_level=grade_level).count()
     required_courses = Course.objects.filter(
-        grade_levels__contains=[grade_level],
-        course_type='CORE'  # Adjust based on your actual course type values
+        grade_level=grade_level,
+        course_type='Required'  # Using 'Required' instead of 'CORE'
     )
     
     return {
@@ -299,7 +299,7 @@ def distribute_all_courses() -> Dict[str, any]:
             logger.info("Cleared all existing distributions")
 
             # Get all courses with registered students, ordered by:
-            # 1. Course type (core courses first)
+            # 1. Course type (Required courses first)
             # 2. Number of sections (ascending)
             # 3. Number of students (descending)
             courses = Course.objects.annotate(
@@ -308,7 +308,7 @@ def distribute_all_courses() -> Dict[str, any]:
             ).filter(
                 student_count__gt=0
             ).order_by(
-                '-course_type',  # Assuming 'CORE' sorts higher than 'ELECTIVE'
+                '-course_type',  # 'Required' sorts higher than 'Elective'
                 'section_count',
                 '-student_count'
             )
@@ -333,8 +333,8 @@ def distribute_all_courses() -> Dict[str, any]:
                 course_result = distribute_course_students(course.id)
                 
                 # Track grade levels for validation
-                if course.course_type == 'CORE':  # Adjust based on your actual course type values
-                    grade_levels.update(course.grade_levels)
+                if course.course_type == 'Required':
+                    grade_levels.add(course.grade_level)
                 
                 # Verify no conflicts after distribution
                 sections = Section.objects.filter(course=course).select_related('course')
@@ -422,7 +422,7 @@ def get_course_distribution_status(course_id: int) -> Dict[str, any]:
                     'section_name': section.name,
                     'student_count': section.students.count(),
                     'period': section.period.name if section.period else None,
-                    'students': list(section.students.values('id', 'first_name', 'last_name'))
+                    'students': list(section.students.values('id', 'first_name', 'last_name', 'grade_level'))
                 }
                 for section in sections
             ]

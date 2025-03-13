@@ -50,7 +50,6 @@ class CourseDistributionMixin:
             })
         
         context = {
-            'title': 'Course Distribution Management',
             'courses': course_data,
             **self.admin_site.each_context(request),
         }

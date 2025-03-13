@@ -50,7 +50,7 @@
         <div class="example">
             <h3>Users (users.csv)</h3>
             <div class="example-header">
-                <a href="{% static 'example_data/users.csv' %}" class="download-link" download>Download Sample</a>
+                <a href="{% url 'serve_csv' filename='users.csv' %}" class="download-link">Download Sample</a>
             </div>
             <pre>username,email,first_name,last_name,role,grade_level,password
 john.smith,john.smith@school.edu,John,Smith,TEACHER,,password123
@@ -66,7 +66,7 @@ jane.doe,jane.doe@school.edu,Jane,Doe,STUDENT,7,password123</pre>
         <div class="example">
             <h3>Courses (courses.csv)</h3>
             <div class="example-header">
-                <a href="{% static 'example_data/courses.csv' %}" class="download-link" download>Download Sample</a>
+                <a href="{% url 'serve_csv' filename='courses.csv' %}" class="download-link">Download Sample</a>
             </div>
             <pre>name,code,description,teacher_username,max_students,grade_level,num_sections,duration
 English 7,ENG7,7th Grade English,john.smith,60,7,2,YEAR
@@ -102,17 +102,24 @@ MATH7,2,,2nd Period,,28</pre>
         <div class="example">
             <h3>Periods (periods.csv)</h3>
             <div class="example-header">
-                <a href="{% static 'example_data/periods.csv' %}" class="download-link" download>Download Sample</a>
+                <a href="{% url 'serve_csv' filename='periods.csv' %}" class="download-link">Download Sample</a>
             </div>
             <pre>name,start_time,end_time
-1st Period,08:00,09:00
-2nd Period,09:00,10:00</pre>
+1st Period,08:00,08:50
+2nd Period,09:00,09:50
+6th Period,13:30,14:20
+7th Period,14:30,15:20</pre>
+            <p>Notes:</p>
+            <ul>
+                <li>Times must be in 24-hour format (e.g., 13:30 for 1:30 PM)</li>
+                <li>Each period should have unique start and end times</li>
+            </ul>
         </div>
 
         <div class="example">
             <h3>Rooms (rooms.csv)</h3>
             <div class="example-header">
-                <a href="{% static 'example_data/rooms.csv' %}" class="download-link" download>Download Sample</a>
+                <a href="{% url 'serve_csv' filename='rooms.csv' %}" class="download-link">Download Sample</a>
             </div>
             <pre>name,capacity,description
 Room 101,30,Math classroom

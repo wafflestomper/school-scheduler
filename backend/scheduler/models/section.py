@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Count, QuerySet
 from .users import User
 from .course import Course
+from ..choices import TrimesterChoices
 
 class Section(models.Model):
     """Model for course sections"""
@@ -25,6 +26,19 @@ class Section(models.Model):
         unique=True,
         db_index=True,
         help_text="Generated section name (e.g., ENG7-1)"
+    )
+    trimester: Optional[int] = models.IntegerField(
+        null=True,
+        blank=True,
+        choices=TrimesterChoices.CHOICES,
+        db_index=True,
+        help_text="Which trimester this section is scheduled for (required for trimester courses)"
+    )
+    max_students: Optional[int] = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="Maximum number of students allowed in this section (optional, defaults to course max_students_per_section)"
     )
     teacher: Optional[User] = models.ForeignKey(
         User,
@@ -93,6 +107,16 @@ class Section(models.Model):
         if self.course and self.section_number > self.course.num_sections:
             raise ValidationError({
                 'section_number': f'Section number cannot exceed course\'s number of sections ({self.course.num_sections})'
+            })
+        
+        # Validate trimester assignment
+        if self.course and self.course.duration == 'TRIMESTER' and not self.trimester:
+            raise ValidationError({
+                'trimester': 'Trimester courses must have a trimester assigned'
+            })
+        elif self.course and self.course.duration == 'YEAR' and self.trimester:
+            raise ValidationError({
+                'trimester': 'Year-long courses should not have a trimester assigned'
             })
         
         # Validate room capacity if room is assigned

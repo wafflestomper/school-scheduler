@@ -1,5 +1,6 @@
-name,description,teacher_username,max_students,grade_level
-Algebra I,Basic algebra course,jsmith,30,9
-Biology,Introduction to biology,mwilson,25,9
-World History,Study of world history,jsmith,28,9
-English Literature,Classic literature studies,mwilson,25,9
+name,code,description,teacher_username,max_students,grade_level,num_sections,duration
+6th Grade English,ENG6,Year-long required English course focusing on literature and writing,,80,6,5,YEAR
+6th Grade Math,MATH6,Year-long required Mathematics course covering pre-algebra concepts,,80,6,5,YEAR
+6th Grade Science,SCI6,Year-long required Science course covering earth and life sciences,,80,6,5,YEAR
+6th Grade Social Studies,SOC6,Year-long required Social Studies course covering ancient civilizations,,80,6,5,YEAR
+6th Grade Physical Education,PE6,Year-long required Physical Education course,,80,6,5,YEAR

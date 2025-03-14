@@ -1,25 +1,24 @@
 from django.contrib import admin
 from django.contrib.admin import AdminSite
 from .base import TeacherFilterMixin
-from .course_admin import CourseAdmin
+from .users import UserAdmin
+from .course_admin import CourseAdmin, LanguageGroupAdmin
 from .section_admin import SectionAdmin
 from .period_admin import PeriodAdmin
-from .users import UserAdmin
 from .facilities import RoomAdmin
-from .groups import StudentGroupAdmin, SiblingGroupAdmin
 from .configuration import (
     SchedulingConfigurationAdmin,
-    SiblingConfigurationAdmin,
-    StudentGroupConfigurationAdmin,
-    ElectiveConfigurationAdmin,
     CourseTypeConfigurationAdmin
 )
 from ..models import (
-    User, Course, Period, Section, Room,
-    StudentGroup, SiblingGroup,
-    SchedulingConfiguration, SiblingConfiguration,
-    StudentGroupConfiguration, ElectiveConfiguration,
-    CourseTypeConfiguration
+    User,
+    Course,
+    Section,
+    Period,
+    Room,
+    SchedulingConfiguration,
+    CourseTypeConfiguration,
+    LanguageGroup
 )
 
 class CustomAdminSite(AdminSite):
@@ -37,13 +36,9 @@ admin.site.register(Course, CourseAdmin)
 admin.site.register(Section, SectionAdmin)
 admin.site.register(Period, PeriodAdmin)
 admin.site.register(Room, RoomAdmin)
-admin.site.register(StudentGroup, StudentGroupAdmin)
-admin.site.register(SiblingGroup, SiblingGroupAdmin)
 admin.site.register(SchedulingConfiguration, SchedulingConfigurationAdmin)
-admin.site.register(SiblingConfiguration, SiblingConfigurationAdmin)
-admin.site.register(StudentGroupConfiguration, StudentGroupConfigurationAdmin)
-admin.site.register(ElectiveConfiguration, ElectiveConfigurationAdmin)
 admin.site.register(CourseTypeConfiguration, CourseTypeConfigurationAdmin)
+admin.site.register(LanguageGroup, LanguageGroupAdmin)
 
 __all__ = [
     'TeacherFilterMixin',
@@ -52,11 +47,7 @@ __all__ = [
     'PeriodAdmin',
     'UserAdmin',
     'RoomAdmin',
-    'StudentGroupAdmin',
-    'SiblingGroupAdmin',
     'SchedulingConfigurationAdmin',
-    'SiblingConfigurationAdmin',
-    'StudentGroupConfigurationAdmin',
-    'ElectiveConfigurationAdmin',
-    'CourseTypeConfigurationAdmin'
+    'CourseTypeConfigurationAdmin',
+    'LanguageGroupAdmin'
 ] 

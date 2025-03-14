@@ -53,14 +53,26 @@
         display: flex;
         gap: 10px;
     }
+    .student-status {
+        font-size: 0.9em;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin-left: 8px;
+    }
+    .status-registered {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    .status-enrolled {
+        background-color: #d4edda;
+        color: #155724;
+    }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Get the course ID from the URL since we're in the admin change form
     const urlParts = window.location.pathname.split('/');
     const courseId = urlParts[urlParts.indexOf('course') + 1];
-    console.log('Course ID from URL:', courseId);
     
     if (!courseId) {
         console.error('Could not find course ID from URL');
@@ -68,6 +80,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     const registeredStudentsList = document.getElementById('registered-students');
+    const enrolledStudentsList = document.getElementById('enrolled-students');
     const availableStudentsList = document.getElementById('available-students');
     const gradeFilter = document.getElementById('grade-filter');
     const searchFilter = document.getElementById('search-filter');
@@ -75,19 +88,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const errorDisplay = document.getElementById('error-display');
     const successDisplay = document.getElementById('success-display');
     
-    // Debug log for DOM elements
-    console.log('DOM Elements found:', {
-        registeredStudentsList: !!registeredStudentsList,
-        availableStudentsList: !!availableStudentsList,
-        gradeFilter: !!gradeFilter,
-        searchFilter: !!searchFilter,
-        capacityDisplay: !!capacityDisplay,
-        errorDisplay: !!errorDisplay,
-        successDisplay: !!successDisplay
-    });
-    
     let availableStudents = [];
     let registeredStudents = [];
+    let enrolledStudents = [];
     let courseGrade = null;
     let availableGrades = [];
     
@@ -107,114 +110,92 @@ document.addEventListener('DOMContentLoaded', function() {
             successDisplay.style.display = 'block';
             setTimeout(() => {
                 successDisplay.style.display = 'none';
-            }, 3000);
-        }
-    }
-    
-    function updateCapacityDisplay() {
-        if (capacityDisplay) {
-            const registered = registeredStudents ? registeredStudents.length : 0;
-            capacityDisplay.textContent = `Currently Registered: ${registered}`;
+            }, 5000);
         }
     }
     
     async function loadRegisteredStudents() {
         try {
-            console.log('Fetching registered students for course:', courseId);
-            if (registeredStudentsList) {
-                registeredStudentsList.classList.add('loading');
-            }
             const response = await fetch(`/admin/scheduler/course/${courseId}/registered-students/`);
-            console.log('Registered students response status:', response.status);
-            
             const data = await response.json();
-            console.log('Registered students data:', data);
-            
-            if (!data || !Array.isArray(data.students)) {
-                throw new Error('Invalid response format');
-            }
-            
-            registeredStudents = data.students;
-            courseGrade = data.course_grade;
-            
-            console.log('Number of registered students:', registeredStudents.length);
             
             if (registeredStudentsList) {
-                registeredStudentsList.innerHTML = '';
-                if (registeredStudents.length === 0) {
-                    registeredStudentsList.innerHTML = '<div class="student-item">No students currently registered</div>';
-                } else {
-                    data.students.forEach(student => {
-                        const div = document.createElement('div');
-                        div.className = 'student-item';
-                        div.innerHTML = `
-                            <span>${student.first_name} ${student.last_name} (Grade ${student.grade_level})</span>
-                            <button onclick="removeStudent(${student.id})">Remove</button>
-                        `;
-                        registeredStudentsList.appendChild(div);
-                    });
-                }
+                registeredStudents = data.students;
+                courseGrade = data.course_grade;
+                
+                registeredStudentsList.innerHTML = registeredStudents.map(student => `
+                    <div class="student-item">
+                        <span>${student.first_name} ${student.last_name} (Grade ${student.grade_level})
+                        <span class="student-status status-registered">Registered</span></span>
+                        <button onclick="removeStudent(${student.id})">Remove</button>
+                    </div>
+                `).join('') || '<p>No registered students</p>';
             }
-            updateCapacityDisplay();
         } catch (error) {
-            console.error('Error in loadRegisteredStudents:', error);
-            showError('Error loading registered students: ' + error.message);
-        } finally {
-            if (registeredStudentsList) {
-                registeredStudentsList.classList.remove('loading');
+            showError('Failed to load registered students');
+            console.error('Error loading registered students:', error);
+        }
+    }
+
+    async function loadEnrolledStudents() {
+        try {
+            const response = await fetch(`/admin/scheduler/course/${courseId}/enrolled-students/`);
+            const data = await response.json();
+            
+            if (enrolledStudentsList) {
+                enrolledStudents = data.students;
+                
+                enrolledStudentsList.innerHTML = enrolledStudents.map(student => `
+                    <div class="student-item">
+                        <span>${student.first_name} ${student.last_name} (Grade ${student.grade_level})
+                        <span class="student-status status-enrolled">Enrolled in Section ${student.section_number}</span></span>
+                    </div>
+                `).join('') || '<p>No enrolled students</p>';
             }
+        } catch (error) {
+            showError('Failed to load enrolled students');
+            console.error('Error loading enrolled students:', error);
         }
     }
     
     async function loadAvailableStudents() {
         try {
-            console.log('Fetching available students for course:', courseId);
-            if (availableStudentsList) {
-                availableStudentsList.classList.add('loading');
-            }
             const response = await fetch(`/admin/scheduler/course/${courseId}/available-students/`);
-            console.log('Available students response status:', response.status);
-            
             const data = await response.json();
-            console.log('Available students data:', data);
             
-            if (!data || !Array.isArray(data.students)) {
-                throw new Error('Invalid response format');
-            }
-            
-            availableStudents = data.students;
-            availableGrades = data.available_grades || [];
-            courseGrade = data.course_grade;
-            
-            console.log('Number of available students:', availableStudents.length);
-            console.log('Available grades:', availableGrades);
-            
-            if (gradeFilter) {
-                // Store current selection or use course grade for initial load
-                const currentSelection = gradeFilter.value || courseGrade?.toString();
-                
-                gradeFilter.innerHTML = '<option value="">All Grades</option>';
-                availableGrades.forEach(grade => {
-                    const option = document.createElement('option');
-                    option.value = grade;
-                    option.textContent = `Grade ${grade}`;
-                    gradeFilter.appendChild(option);
-                });
-                
-                // Restore previous selection or use course grade if it exists in the options
-                if (currentSelection && availableGrades.includes(parseInt(currentSelection))) {
-                    gradeFilter.value = currentSelection;
-                }
-            }
-            
-            filterAndDisplayAvailableStudents();
-        } catch (error) {
-            console.error('Error in loadAvailableStudents:', error);
-            showError('Error loading available students: ' + error.message);
-        } finally {
             if (availableStudentsList) {
-                availableStudentsList.classList.remove('loading');
+                availableStudents = data.students;
+                availableGrades = data.available_grades;
+                
+                // Update grade filter options
+                if (gradeFilter) {
+                    const currentValue = gradeFilter.value;
+                    gradeFilter.innerHTML = `
+                        <option value="">All Grades</option>
+                        ${availableGrades.map(grade => 
+                            `<option value="${grade}" ${grade === courseGrade ? 'selected' : ''}>
+                                Grade ${grade}
+                            </option>`
+                        ).join('')}
+                    `;
+                    gradeFilter.value = currentValue;
+                }
+                
+                filterAndDisplayAvailableStudents();
             }
+            
+            // Update capacity display
+            if (capacityDisplay) {
+                capacityDisplay.innerHTML = `
+                    <p>Total Capacity: ${data.total_capacity}</p>
+                    <p>Registered Students: ${registeredStudents.length}</p>
+                    <p>Enrolled Students: ${enrolledStudents.length}</p>
+                    <p>Available Spots: ${data.available_space}</p>
+                `;
+            }
+        } catch (error) {
+            showError('Failed to load available students');
+            console.error('Error loading available students:', error);
         }
     }
     
@@ -224,34 +205,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const gradeValue = gradeFilter ? gradeFilter.value : '';
         const searchValue = searchFilter ? searchFilter.value.toLowerCase() : '';
         
-        console.log('Filtering students with:', { gradeValue, searchValue }); // Debug log
-        
         const filteredStudents = availableStudents.filter(student => {
-            const matchesGrade = !gradeValue || student.grade_level.toString() === gradeValue;
+            const matchesGrade = !gradeValue || student.grade_level === parseInt(gradeValue);
             const matchesSearch = !searchValue || 
-                student.first_name.toLowerCase().includes(searchValue) || 
-                student.last_name.toLowerCase().includes(searchValue);
+                `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchValue);
             return matchesGrade && matchesSearch;
         });
         
-        console.log('Filtered students count:', filteredStudents.length); // Debug log
-        
-        availableStudentsList.innerHTML = '';
-        if (filteredStudents.length === 0) {
-            availableStudentsList.innerHTML = '<div class="student-item">No available students found</div>';
-        } else {
-            filteredStudents.forEach(student => {
-                const div = document.createElement('div');
-                div.className = 'student-item';
-                div.innerHTML = `
-                    <span>${student.first_name} ${student.last_name} (Grade ${student.grade_level})</span>
-                    <button onclick="addStudent(${student.id})">Add</button>
-                `;
-                availableStudentsList.appendChild(div);
-            });
-        }
+        availableStudentsList.innerHTML = filteredStudents.map(student => `
+            <div class="student-item">
+                <span>${student.first_name} ${student.last_name} (Grade ${student.grade_level})</span>
+                <button onclick="addStudent(${student.id})">Add</button>
+            </div>
+        `).join('') || '<p>No available students match the filters</p>';
     }
     
+    async function refreshAllLists() {
+        // First load enrolled students
+        await loadEnrolledStudents();
+        // Then load registered (but not enrolled) students
+        await loadRegisteredStudents();
+        // Finally load available students (not registered or enrolled)
+        await loadAvailableStudents();
+    }
+
     window.addStudent = async function(studentId) {
         try {
             const response = await fetch(`/admin/scheduler/course/${courseId}/add-student/${studentId}/`, {
@@ -267,8 +244,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(data.error || 'Failed to add student');
             }
             
-            showSuccess('Student added successfully');
-            await Promise.all([loadRegisteredStudents(), loadAvailableStudents()]);
+            showSuccess('Student registered successfully');
+            await refreshAllLists();
         } catch (error) {
             showError(error.message);
         }
@@ -289,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             showSuccess('Student removed successfully');
-            await Promise.all([loadRegisteredStudents(), loadAvailableStudents()]);
+            await refreshAllLists();
         } catch (error) {
             showError(error.message);
         }
@@ -314,50 +291,55 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             showSuccess('All students removed successfully');
-            await Promise.all([loadRegisteredStudents(), loadAvailableStudents()]);
+            await refreshAllLists();
         } catch (error) {
             showError(error.message);
         }
     };
     
     window.addAllFilteredStudents = async function() {
-        const gradeValue = gradeFilter ? gradeFilter.value : '';
-        const searchValue = searchFilter ? searchFilter.value.toLowerCase() : '';
-        
-        const filteredStudents = availableStudents.filter(student => {
-            const matchesGrade = !gradeValue || student.grade_level.toString() === gradeValue;
-            const matchesSearch = !searchValue || 
-                student.first_name.toLowerCase().includes(searchValue) || 
-                student.last_name.toLowerCase().includes(searchValue);
-            return matchesGrade && matchesSearch;
-        });
-        
-        if (filteredStudents.length === 0) {
-            showError('No students available to add');
-            return;
-        }
-        
-        if (!confirm(`Are you sure you want to add ${filteredStudents.length} students to this course?`)) {
-            return;
-        }
-        
         try {
+            const gradeValue = gradeFilter ? gradeFilter.value : '';
+            const searchValue = searchFilter ? searchFilter.value.toLowerCase() : '';
+            
+            // Get all filtered students' IDs
+            const filteredStudents = availableStudents.filter(student => {
+                const matchesGrade = !gradeValue || student.grade_level === parseInt(gradeValue);
+                const matchesSearch = !searchValue || 
+                    `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchValue);
+                return matchesGrade && matchesSearch;
+            });
+
+            const studentIds = filteredStudents.map(student => student.id);
+            
+            if (studentIds.length === 0) {
+                showError('No students match the current filters');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to register ${studentIds.length} students to this course?`)) {
+                return;
+            }
+
             const response = await fetch(`/admin/scheduler/course/${courseId}/add-students/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
-                body: JSON.stringify({ student_ids: filteredStudents.map(s => s.id) })
+                body: JSON.stringify({
+                    student_ids: studentIds
+                })
             });
             
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Failed to add students');
+                throw new Error(data.error || 'Failed to register filtered students');
             }
             
-            showSuccess('Students added successfully');
-            await Promise.all([loadRegisteredStudents(), loadAvailableStudents()]);
+            const data = await response.json();
+            showSuccess(data.message || `Successfully registered ${studentIds.length} students`);
+            await refreshAllLists();
         } catch (error) {
             showError(error.message);
         }
@@ -367,13 +349,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (gradeFilter) {
         gradeFilter.addEventListener('change', filterAndDisplayAvailableStudents);
     }
+    
     if (searchFilter) {
         searchFilter.addEventListener('input', filterAndDisplayAvailableStudents);
     }
     
     // Initial load
-    loadRegisteredStudents();
-    loadAvailableStudents();
+    refreshAllLists();
 });
 </script>
 {% endblock %}
@@ -391,7 +373,12 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
     
     <div class="student-section">
-        <h3>Registered Students</h3>
+        <h3>Enrolled Students</h3>
+        <div id="enrolled-students" class="student-list"></div>
+    </div>
+    
+    <div class="student-section">
+        <h3>Registered Students (Awaiting Section Assignment)</h3>
         <div class="button-group">
             <button onclick="removeAllStudents()">Remove All Students</button>
         </div>
@@ -411,9 +398,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 Search:
                 <input type="text" id="search-filter" placeholder="Search by name...">
             </label>
-        </div>
-        <div class="button-group">
-            <button onclick="addAllFilteredStudents()">Add All Filtered</button>
+            <div class="button-group">
+                <button onclick="addAllFilteredStudents()" class="add-all-button">Add All Filtered Students</button>
+            </div>
         </div>
         <div id="available-students" class="student-list"></div>
     </div>

@@ -1,0 +1,7 @@
+course_code,section_number,teacher_username,period_name,room_name,max_size
+ENG7,1,john.smith,1st Period,Room 101,25
+ENG7,2,jane.doe,2nd Period,Room 102,
+MATH7,1,,1st,Room 201,30
+MATH7,2,,2nd Period,,28
+SCI7,1,sarah.miller,1,Room 301,22
+SCI7,2,mike.brown,2nd,Room 302,24 

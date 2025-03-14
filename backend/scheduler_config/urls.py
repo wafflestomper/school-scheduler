@@ -20,10 +20,44 @@ from django.views.generic.base import RedirectView
 from scheduler.views.bulk_upload_views import BulkUserUploadView
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve
+from django.http import HttpResponse, Http404
+import os
+import mimetypes
+
+def serve_csv(request, filename):
+    """Serve CSV files with proper content type"""
+    if not filename.endswith('.csv'):
+        raise Http404("File not found")
+        
+    # Look in both possible locations for the file
+    possible_paths = [
+        os.path.join(settings.BASE_DIR, 'static', 'example_data', filename),
+        os.path.join(settings.BASE_DIR, 'example_data', filename)
+    ]
+    
+    file_path = None
+    for path in possible_paths:
+        if os.path.exists(path):
+            file_path = path
+            break
+            
+    if not file_path:
+        raise Http404(f"File not found: {filename}")
+        
+    try:
+        with open(file_path, 'rb') as f:
+            response = HttpResponse(f.read())
+            response['Content-Type'] = 'text/csv'
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+    except IOError:
+        raise Http404(f"Error reading file: {filename}")
 
 urlpatterns = [
     path('', RedirectView.as_view(url='/admin/', permanent=True), name='index'),
     path('admin/', admin.site.urls),
     path('scheduler/', include('scheduler.urls')),  # Include scheduler URLs with prefix
     path('bulk-upload/users/', BulkUserUploadView.as_view(), name='bulk-user-upload'),
+    path('download/csv/<str:filename>', serve_csv, name='serve_csv'),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

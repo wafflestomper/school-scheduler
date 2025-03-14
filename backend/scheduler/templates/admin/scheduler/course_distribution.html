@@ -1,0 +1,375 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+    .distribution-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .distribution-table th, .distribution-table td {
+        padding: 8px;
+        border: 1px solid #ddd;
+        text-align: left;
+    }
+    .distribution-table th {
+        background-color: #f5f5f5;
+    }
+    .action-buttons {
+        margin: 20px 0;
+    }
+    .action-button {
+        background-color: #79aec8;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 4px;
+        color: white;
+        cursor: pointer;
+        margin-right: 10px;
+    }
+    .action-button:hover {
+        background-color: #417690;
+    }
+    .section-details {
+        margin-top: 10px;
+        padding-left: 20px;
+    }
+    .message {
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+    }
+    .success {
+        background-color: #dff0d8;
+        border: 1px solid #d6e9c6;
+        color: #3c763d;
+    }
+    .error {
+        background-color: #f2dede;
+        border: 1px solid #ebccd1;
+        color: #a94442;
+    }
+    .form-row {
+        margin: 20px 0;
+    }
+    .form-row label {
+        display: block;
+        margin-bottom: 5px;
+    }
+    .form-row select,
+    .form-row input[type="file"] {
+        padding: 5px;
+        width: 100%;
+        max-width: 400px;
+    }
+    .example {
+        background: #fff;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .example-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .download-link {
+        display: inline-block;
+        padding: 5px 10px;
+        background-color: #417690;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    .download-link:hover {
+        background-color: #205067;
+        color: white;
+    }
+    .example pre {
+        background-color: #f5f5f5;
+        padding: 10px;
+        border-radius: 4px;
+        overflow-x: auto;
+    }
+    .success-message {
+        background-color: #dff0d8;
+        color: #3c763d;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    .error-message {
+        background-color: #f2dede;
+        color: #a94442;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    .example ul {
+        margin-top: 10px;
+        padding-left: 20px;
+    }
+    .example li {
+        margin-bottom: 5px;
+    }
+    .section-list {
+        margin: 15px;
+    }
+    .section-item {
+        background: #f9f9f9;
+        padding: 15px;
+        margin-bottom: 15px;
+        border-radius: 4px;
+        border: 1px solid #ddd;
+    }
+    .section-item h4 {
+        margin: 0 0 10px 0;
+        color: #417690;
+    }
+    .unassigned-students {
+        margin-top: 20px;
+        padding: 15px;
+        background: #fff3f3;
+        border: 1px solid #ffcdd2;
+        border-radius: 4px;
+    }
+    .section-count {
+        font-weight: bold;
+    }
+    .section-count.complete {
+        color: #28a745;  /* Green */
+    }
+    .section-count.incomplete {
+        color: #dc3545;  /* Red */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Course Distribution Management</h1>
+    
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="message {% if message.tags %}{{ message.tags }}{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="action-buttons">
+        <button class="action-button" onclick="distributeAll()">Distribute All Courses</button>
+        <button class="action-button" onclick="clearAllDistributions()">Clear All Distributions</button>
+    </div>
+
+    <table class="distribution-table">
+        <thead>
+            <tr>
+                <th>Course</th>
+                <th>Grade Level</th>
+                <th>Total Students</th>
+                <th>Number of Sections</th>
+                <th>Distribution Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for course in courses %}
+            <tr id="course-row-{{ course.id }}">
+                <td><a href="{% url 'admin:scheduler_course_change' course.id %}" style="color: #417690; text-decoration: none;">{{ course.name }} ({{ course.code }})</a></td>
+                <td>{{ course.grade_level }}</td>
+                <td>{{ course.total_students }}</td>
+                <td><span class="section-count {% if course.created_sections == course.num_sections %}complete{% else %}incomplete{% endif %}">{{ course.created_sections }}/{{ course.num_sections }}</span></td>
+                <td id="status-{{ course.id }}">
+                    {% if course.is_distributed %}
+                    Distributed
+                    {% else %}
+                    Not Distributed
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="action-button" onclick="distributeCourse({{ course.id }})">Distribute</button>
+                    <button class="action-button" onclick="clearDistribution({{ course.id }})">Clear</button>
+                    <button class="action-button" onclick="toggleDetails({{ course.id }})">Show Details</button>
+                </td>
+            </tr>
+            <tr id="details-{{ course.id }}" style="display: none;">
+                <td colspan="6">
+                    <div class="section-details" id="section-details-{{ course.id }}">
+                        Loading section details...
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<script>
+async function loadSectionDetails(courseId) {
+    try {
+        const response = await fetch(`/admin/scheduler/course/api/course-distribution/${courseId}/`);
+        const data = await response.json();
+        if (data.success) {
+            updateSectionDetails(courseId, data);
+        } else {
+            showMessage(data.error || 'Error loading section details', 'error');
+        }
+    } catch (error) {
+        showMessage('Error loading section details', 'error');
+    }
+}
+
+function updateSectionDetails(courseId, data) {
+    const detailsDiv = document.getElementById(`section-details-${courseId}`);
+    if (!data.distribution) {
+        detailsDiv.innerHTML = 'No distribution data available';
+        return;
+    }
+
+    let html = '<div class="section-list">';
+    data.distribution.forEach(section => {
+        html += `
+            <div class="section-item">
+                <h4>${section.section_name} - ${section.period || 'No Period Assigned'}</h4>
+                <p>Students: ${section.student_count}</p>
+                <ul>
+                    ${section.students.map(student => 
+                        `<li>${student.first_name} ${student.last_name}</li>`
+                    ).join('')}
+                </ul>
+            </div>
+        `;
+    });
+
+    if (data.unassigned_students && data.unassigned_students.length > 0) {
+        html += '<div class="unassigned-students">';
+        html += '<h4>Unassigned Students:</h4>';
+        html += '<ul>';
+        data.unassigned_students.forEach(student => {
+            html += `<li>${student.first_name} ${student.last_name} - ${student.reason}</li>`;
+        });
+        html += '</ul></div>';
+    }
+
+    html += '</div>';
+    detailsDiv.innerHTML = html;
+}
+
+function toggleDetails(courseId) {
+    const detailsRow = document.getElementById(`details-${courseId}`);
+    if (detailsRow.style.display === 'none') {
+        detailsRow.style.display = 'table-row';
+        loadSectionDetails(courseId);
+    } else {
+        detailsRow.style.display = 'none';
+    }
+}
+
+async function distributeCourse(courseId) {
+    try {
+        const response = await fetch(`/admin/scheduler/course/api/distribute/${courseId}/`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            showMessage('Course distributed successfully', 'success');
+            loadSectionDetails(courseId);
+            updateStatus(courseId, true);
+        } else {
+            showMessage(data.error || 'Error distributing course', 'error');
+        }
+    } catch (error) {
+        showMessage('Error distributing course', 'error');
+    }
+}
+
+async function clearDistribution(courseId) {
+    try {
+        const response = await fetch(`/admin/scheduler/course/api/clear-distribution/${courseId}/`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            showMessage('Distribution cleared successfully', 'success');
+            loadSectionDetails(courseId);
+            updateStatus(courseId, false);
+        } else {
+            showMessage(data.error || 'Error clearing distribution', 'error');
+        }
+    } catch (error) {
+        showMessage('Error clearing distribution', 'error');
+    }
+}
+
+async function distributeAll() {
+    try {
+        const response = await fetch('/admin/scheduler/course/api/distribute-all/', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            showMessage('All courses distributed successfully', 'success');
+            location.reload();
+        } else {
+            showMessage(data.error || 'Error distributing all courses', 'error');
+        }
+    } catch (error) {
+        showMessage('Error distributing all courses', 'error');
+    }
+}
+
+async function clearAllDistributions() {
+    try {
+        const response = await fetch('/admin/scheduler/course/api/clear-all-distributions/', {
+            method: 'POST'
+        });
+        const data = await response.json();
+        if (data.success) {
+            showMessage('All distributions cleared successfully', 'success');
+            location.reload();
+        } else {
+            showMessage(data.error || 'Error clearing all distributions', 'error');
+        }
+    } catch (error) {
+        showMessage('Error clearing all distributions', 'error');
+    }
+}
+
+function updateStatus(courseId, isDistributed) {
+    const statusCell = document.getElementById(`status-${courseId}`);
+    statusCell.textContent = isDistributed ? 'Distributed' : 'Not Distributed';
+}
+
+function showMessage(message, type) {
+    const messagesDiv = document.querySelector('.messages') || createMessagesDiv();
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}`;
+    messageDiv.textContent = message;
+    messagesDiv.appendChild(messageDiv);
+    
+    setTimeout(() => {
+        messageDiv.remove();
+        if (!messagesDiv.hasChildNodes()) {
+            messagesDiv.remove();
+        }
+    }, 5000);
+}
+
+function createMessagesDiv() {
+    const messagesDiv = document.createElement('div');
+    messagesDiv.className = 'messages';
+    document.querySelector('#content-main').insertBefore(
+        messagesDiv,
+        document.querySelector('.action-buttons')
+    );
+    return messagesDiv;
+}
+</script>
+{% endblock %} 

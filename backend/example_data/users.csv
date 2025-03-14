@@ -1,6 +1,7 @@
-username,email,first_name,last_name,role,grade_level,password
-jsmith,john@example.com,John,Smith,TEACHER,,password123
-mwilson,mary@example.com,Mary,Wilson,TEACHER,,password123
-awhite,amy@example.com,Amy,White,STUDENT,9,password123
-bjones,bob@example.com,Bob,Jones,STUDENT,9,password123
-clee,chris@example.com,Chris,Lee,STUDENT,10,password123
+username,user_id,email,first_name,last_name,role,grade_level,gender,password
+john.smith,T1001,john.smith@school.edu,John,Smith,TEACHER,,,changeme123
+jane.doe,S1001,jane.doe@school.edu,Jane,Doe,STUDENT,7,F,
+bob.wilson,T1002,bob.wilson@school.edu,Bob,Wilson,TEACHER,,,
+sarah.jones,T1003,sarah.jones@school.edu,Sarah,Jones,TEACHER,,,changeme123
+mike.brown,S1002,mike.brown@school.edu,Mike,Brown,STUDENT,8,M,
+lisa.white,S1003,lisa.white@school.edu,Lisa,White,STUDENT,7,F,

@@ -7,6 +7,83 @@ from django.db.models import Count, QuerySet
 from .users import User
 from ..choices import CourseTypes, CourseDurations
 
+class CourseGroup(models.Model):
+    """Model for grouping mutually exclusive courses"""
+    name = models.CharField(
+        max_length=100,
+        help_text="Name of the course group (e.g., 'Theatre and Coding Combinations')"
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Description of why these courses are mutually exclusive"
+    )
+
+    def __str__(self) -> str:
+        return self.name
+
+    def clean(self) -> None:
+        """Validate that the group has at least two courses"""
+        if self.pk and self.courses.count() < 2:
+            raise ValidationError("A course group must contain at least two courses")
+
+    class Meta:
+        verbose_name = "Course Group"
+        verbose_name_plural = "Course Groups"
+
+class LanguageGroup(models.Model):
+    """Model for grouping language courses across trimesters"""
+    name = models.CharField(
+        max_length=100,
+        help_text="Name of the language group (e.g., '6th Grade Languages')"
+    )
+    periods = models.ManyToManyField(
+        'Period',
+        help_text="Periods when these language courses are offered"
+    )
+    grade_level = models.IntegerField(
+        help_text="Grade level for this language group"
+    )
+    courses = models.ManyToManyField(
+        'Course',
+        related_name='language_group',
+        limit_choices_to={'course_type': CourseTypes.LANGUAGE},
+        help_text="Language courses in this group"
+    )
+
+    class Meta:
+        verbose_name = "Language Group"
+        verbose_name_plural = "Language Groups"
+
+    def __str__(self):
+        period_list = ", ".join([str(p) for p in self.periods.all()])
+        return f"{self.name} (Grade {self.grade_level}, Periods: {period_list})"
+
+    def clean(self):
+        """Validate that all courses are language courses and sections are in the correct periods"""
+        super().clean()
+        if self.pk:  # Only validate if the object exists
+            for course in self.courses.all():
+                if course.course_type != CourseTypes.LANGUAGE:
+                    raise ValidationError(f"{course.name} must be a LANGUAGE type course")
+                if course.grade_level != self.grade_level:
+                    raise ValidationError(f"{course.name} must be for grade level {self.grade_level}")
+                # Check that all sections are in one of the allowed periods
+                if course.sections.exclude(period__in=self.periods.all()).exists():
+                    raise ValidationError(f"All sections of {course.name} must be in one of the selected periods")
+
+class StudentCountRequirementTypes:
+    EXACT = 'EXACT'
+    MINIMUM = 'MIN'
+    MAXIMUM = 'MAX'
+    FULL_GRADE = 'FULL'
+    
+    CHOICES = (
+        (EXACT, 'Exact Number'),
+        (MINIMUM, 'Minimum Number'),
+        (MAXIMUM, 'Maximum Number'),
+        (FULL_GRADE, 'Full Grade (Default)'),
+    )
+
 class Course(models.Model):
     """Model for academic courses"""
     name: str = models.CharField(
@@ -50,9 +127,9 @@ class Course(models.Model):
     course_type: str = models.CharField(
         max_length=10,
         choices=CourseTypes.CHOICES,
-        default=CourseTypes.REQUIRED,
+        default=CourseTypes.CORE,
         db_index=True,
-        help_text="Type of course (REQUIRED or ELECTIVE)"
+        help_text="Type of course (CORE or ELECTIVE)"
     )
     students = models.ManyToManyField(
         User,
@@ -60,6 +137,26 @@ class Course(models.Model):
         related_name='registered_courses',
         blank=True,
         help_text="Students registered for this course (to be assigned to sections by the scheduler)"
+    )
+    student_count_requirement_type = models.CharField(
+        max_length=10,
+        choices=StudentCountRequirementTypes.CHOICES,
+        default=StudentCountRequirementTypes.FULL_GRADE,
+        help_text="How to enforce student count requirements for this course"
+    )
+    required_student_count = models.IntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+        help_text="Required number of students (used with Exact, Minimum, or Maximum requirement types)"
+    )
+    exclusivity_group = models.ForeignKey(
+        CourseGroup,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='courses',
+        help_text="Group of mutually exclusive courses this course belongs to"
     )
 
     class Meta:
@@ -109,6 +206,22 @@ class Course(models.Model):
             raise ValidationError({
                 'code': 'Course code must contain only letters and numbers'
             })
+        if self.student_count_requirement_type != StudentCountRequirementTypes.FULL_GRADE:
+            if self.required_student_count is None:
+                raise ValidationError({
+                    'required_student_count': 'Required student count must be set when not using Full Grade requirement type'
+                })
+        
+        # Validate that a student isn't enrolled in mutually exclusive courses
+        if self.exclusivity_group and self.pk:
+            from django.db.models import Q
+            exclusive_courses = self.exclusivity_group.courses.exclude(pk=self.pk)
+            for student in self.students.all():
+                if exclusive_courses.filter(students=student).exists():
+                    raise ValidationError(
+                        f"Student {student} cannot be enrolled in {self.name} as they are already "
+                        f"enrolled in another course from the {self.exclusivity_group.name} group"
+                    )
     
     def save(self, *args: Any, **kwargs: Any) -> None:
         """Save the course instance"""
@@ -121,7 +234,7 @@ class Course(models.Model):
     
     def is_required(self) -> bool:
         """Check if the course is required"""
-        return self.course_type == CourseTypes.REQUIRED
+        return self.course_type == CourseTypes.CORE
 
     def get_next_section_number(self) -> int:
         """Get the next available section number for this course"""

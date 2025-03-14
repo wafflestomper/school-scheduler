@@ -1,0 +1,63 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls static scheduler_tags %}
+
+{% block content %}
+{{ block.super }}
+
+{% if original.role == 'STUDENT' %}
+  <div class="module aligned">
+    <h2>Student Schedule</h2>
+    <table style="width: 100%; margin-top: 1em;">
+      <thead>
+        <tr>
+          <th>Period</th>
+          <th>Time</th>
+          <th>Course</th>
+          <th>Teacher</th>
+          <th>Room</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for period in periods %}
+          {% with sections=student_sections|get_item:period.id %}
+          <tr {% if not sections %}style="background-color: #f5f5f5;"{% endif %}>
+            <td>{{ period.name }}</td>
+            <td>{{ period.start_time|time:"H:i" }} - {{ period.end_time|time:"H:i" }}</td>
+            <td>
+              {% for section in sections %}
+                <div>
+                  {{ section.course.name }}
+                  <div style="color: #666; font-size: 0.9em;">{{ section.course.code }}</div>
+                </div>
+              {% endfor %}
+            </td>
+            <td>
+              {% for section in sections %}
+                <div>
+                  {% if section.teacher %}
+                    {{ section.teacher.get_full_name }}
+                  {% else %}
+                    No teacher assigned
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </td>
+            <td>
+              {% for section in sections %}
+                <div>
+                  {% if section.room %}
+                    {{ section.room.name }}
+                  {% else %}
+                    No room assigned
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </td>
+          </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endif %}
+{% endblock %} 

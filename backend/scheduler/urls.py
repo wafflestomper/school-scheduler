@@ -3,7 +3,7 @@ from scheduler.views import user_views
 from .views.course_views import CourseStudentView, CourseListView, CourseGroupView
 from .views.upload_views import upload_page, upload_csv
 from .views.student_views import StudentScheduleView
-from .views.bulk_enrollment import BulkCourseEnrollmentView
+from .views.bulk_enrollment import BulkCourseRegistrationView
 from .views import (
     scheduling_views,
     course_views,
@@ -37,6 +37,6 @@ urlpatterns = [
     # Scheduling routes
     path('pe6-distribution/', scheduling_views.PE6DistributionView.as_view(), name='pe6_distribution'),
     
-    # Bulk enrollment
-    path('api/bulk-enroll/', BulkCourseEnrollmentView.as_view(), name='bulk-course-enrollment'),
+    # Bulk registration
+    path('api/bulk-enroll/', BulkCourseRegistrationView.as_view(), name='bulk-course-registration'),
 ]

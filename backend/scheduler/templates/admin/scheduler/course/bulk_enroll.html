@@ -9,13 +9,14 @@
 {% block content %}
 <div id="content-main">
   <div class="module">
-    <h2>Bulk Enroll Students in Core Courses</h2>
+    <h2>Bulk Register Students in Core Courses</h2>
     <div class="description">
-      <p>Select the grade levels for which you want to enroll students in core courses. This will:</p>
+      <p>Select the grade levels for which you want to register students in core courses. This will:</p>
       <ul>
         <li>Find all students in the selected grade(s)</li>
         <li>Find all core courses for those grade(s)</li>
-        <li>Enroll each student in all core courses for their grade</li>
+        <li>Register each student in all core courses for their grade</li>
+        <li>Note: This only adds students to course rosters. You'll need to use the scheduler to enroll them in specific sections.</li>
       </ul>
     </div>
     
@@ -34,13 +35,13 @@
           </div>
         </div>
         <div class="form-row">
-          <label for="clear_existing">Clear Existing Enrollments:</label>
+          <label for="clear_existing">Clear Existing Registrations:</label>
           <input type="checkbox" name="clear_existing" id="clear_existing">
-          <p class="help">If checked, will remove existing enrollments before adding new ones</p>
+          <p class="help">If checked, will remove existing registrations before adding new ones</p>
         </div>
       </fieldset>
       <div class="submit-row">
-        <input type="submit" value="Enroll Students" class="default">
+        <input type="submit" value="Register Students" class="default">
       </div>
     </form>
   </div>
@@ -76,12 +77,12 @@ document.getElementById('bulk-enroll-form').addEventListener('submit', async fun
     const data = await response.json();
     
     if (response.ok) {
-      let message = 'Enrollment complete!\n\n';
-      for (const [grade, results] of Object.entries(data.enrollments)) {
+      let message = 'Registration complete!\n\n';
+      for (const [grade, results] of Object.entries(data.registrations)) {
         message += `Grade ${grade}:\n`;
         message += `- Students processed: ${results.students_processed}\n`;
         message += `- Courses processed: ${results.courses_processed}\n`;
-        message += `- Total enrollments: ${results.total_enrollments}\n\n`;
+        message += `- Total registrations: ${results.total_registrations}\n\n`;
       }
       if (data.errors.length > 0) {
         message += 'Warnings:\n' + data.errors.join('\n');

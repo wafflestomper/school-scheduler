@@ -12,20 +12,20 @@ import logging
 logger = logging.getLogger(__name__)
 
 @method_decorator(csrf_exempt, name='dispatch')
-class BulkCourseEnrollmentView(View):
-    """Handle bulk enrollment of students into core courses"""
+class BulkCourseRegistrationView(View):
+    """Handle bulk registration of students into core courses"""
     
     @transaction.atomic
     @handle_exceptions
     @log_execution_time
     def post(self, request):
         """
-        Enroll students in core courses for their grade level
+        Register students in core courses for their grade level
         
         Expected POST data:
         {
             "grade_levels": [6, 7, ...],  # List of grade levels to process
-            "clear_existing": false  # Optional: whether to clear existing enrollments
+            "clear_existing": false  # Optional: whether to clear existing registrations
         }
         """
         try:
@@ -40,7 +40,7 @@ class BulkCourseEnrollmentView(View):
             
             results = {
                 'success': True,
-                'enrollments': {},
+                'registrations': {},
                 'errors': []
             }
             
@@ -49,7 +49,7 @@ class BulkCourseEnrollmentView(View):
                 grade_results = {
                     'students_processed': 0,
                     'courses_processed': 0,
-                    'total_enrollments': 0
+                    'total_registrations': 0
                 }
                 
                 # Get all students in this grade
@@ -72,25 +72,20 @@ class BulkCourseEnrollmentView(View):
                     results['errors'].append(f'No core courses found for grade {grade}')
                     continue
                 
-                # Clear existing enrollments if requested
+                # Clear existing registrations if requested
                 if clear_existing:
                     for course in core_courses:
                         course.students.clear()
                 
-                # Enroll each student in all core courses
+                # Register each student in all core courses
                 for student in students:
                     for course in core_courses:
-                        if course.has_space_for_students(1):
-                            course.students.add(student)
-                            grade_results['total_enrollments'] += 1
-                        else:
-                            results['errors'].append(
-                                f'Course {course.name} is at capacity - could not enroll all students'
-                            )
+                        course.students.add(student)
+                        grade_results['total_registrations'] += 1
                 
                 grade_results['students_processed'] = students.count()
                 grade_results['courses_processed'] = core_courses.count()
-                results['enrollments'][grade] = grade_results
+                results['registrations'][grade] = grade_results
                 
                 # Clear relevant caches
                 for course in core_courses:
@@ -100,7 +95,7 @@ class BulkCourseEnrollmentView(View):
             return JsonResponse(results)
             
         except Exception as e:
-            logger.error(f"Error in bulk enrollment: {str(e)}")
+            logger.error(f"Error in bulk registration: {str(e)}")
             return JsonResponse({
                 'error': str(e)
             }, status=500) 

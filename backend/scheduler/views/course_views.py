@@ -9,11 +9,14 @@ from django.db.models import Q, Prefetch, Count
 from django.core.cache import cache
 from django.db import transaction
 from django.core.exceptions import ValidationError
-from ..models import Course, User, CourseTypeConfiguration
+from ..models import Course, User, CourseTypeConfiguration, CourseGroup
 import json
 import logging
 from functools import wraps
 from time import time
+from ..decorators import handle_exceptions, log_execution_time
+from rest_framework.permissions import AllowAny
+from rest_framework.views import APIView
 
 logger = logging.getLogger(__name__)
 
@@ -69,23 +72,15 @@ def handle_exceptions(func):
 @method_decorator(csrf_exempt, name='dispatch')
 class CourseStudentView(View):
     def get_course_with_students(self, course_id: int) -> Course:
-        """Get course with prefetched students"""
+        """Get a course with its students, using cache if available"""
         cache_key = f'course_with_students_{course_id}'
         course = cache.get(cache_key)
         
         if course is None:
-            course = Course.objects.prefetch_related(
-                Prefetch(
-                    'students',
-                    queryset=User.objects.only(
-                        'id', 'first_name', 'last_name', 'grade_level'
-                    )
-                ),
-                Prefetch(
-                    'sections',
-                    queryset=Course.objects.only('id')
-                )
-            ).get(id=course_id)
+            course = get_object_or_404(
+                Course.objects.prefetch_related('students', 'sections__students'),
+                id=course_id
+            )
             cache.set(cache_key, course, CACHE_TIMEOUT)
         
         return course
@@ -166,16 +161,67 @@ class CourseStudentView(View):
         
         # Otherwise, this is an add request
         data = json.loads(request.body)
+        
+        # Check if this is an "add filtered students" request
+        if data.get('add_filtered_students'):
+            grade_level = data.get('grade_level')
+            search_query = data.get('search_query', '').strip()
+            
+            # Start with all available students
+            students_query = User.objects.filter(role='STUDENT')
+            
+            # Exclude already registered students
+            registered_ids = set(course.students.values_list('id', flat=True))
+            if registered_ids:
+                students_query = students_query.exclude(id__in=registered_ids)
+            
+            # Apply grade level filter if specified
+            if grade_level:
+                students_query = students_query.filter(grade_level=grade_level)
+            elif config and config.enforce_grade_levels and not config.allow_mixed_levels:
+                students_query = students_query.filter(grade_level=course.grade_level)
+            
+            # Apply search filter if specified
+            if search_query:
+                students_query = students_query.filter(
+                    Q(first_name__icontains=search_query) |
+                    Q(last_name__icontains=search_query)
+                )
+            
+            students = students_query.all()
+            
+            # Get available space
+            available_space = course.get_available_space()
+            total_students = students.count()
+            
+            # Add all students to the course (they will be registered but not enrolled)
+            course.students.add(*students)
+            
+            # Clear relevant caches
+            cache.delete(f'course_with_students_{course_id}')
+            cache.delete(f'available_students_{course_id}')
+            
+            logger.info(
+                f"Added {total_students} students to course {course_id} (registered)",
+                extra={
+                    'grade_level': grade_level,
+                    'search_query': search_query,
+                    'student_count': total_students,
+                    'available_space': available_space
+                }
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'added_count': total_students,
+                'message': f'Registered {total_students} students. Note: Only {available_space} spots available for enrollment.'
+            })
+        
+        # Regular add students request
         student_ids = data.get('student_ids', [])
         
         if not student_ids:
             return JsonResponse({'error': 'No students specified'}, status=400)
-        
-        if not course.has_space_for_students(len(student_ids)):
-            return JsonResponse(
-                {'error': 'Adding these students would exceed course capacity'},
-                status=400
-            )
         
         # Get students and validate grade levels if configured
         students = User.objects.filter(id__in=student_ids, role='STUDENT')
@@ -206,45 +252,39 @@ class CourseStudentView(View):
 
 @method_decorator(csrf_exempt, name='dispatch')
 class CourseListView(View):
-    @handle_exceptions
-    @log_execution_time
-    def get(self, request: HttpRequest) -> JsonResponse:
-        """Handle GET requests for course lists"""
-        cache_key = 'all_courses_list'
-        courses_data = cache.get(cache_key)
-        
-        if courses_data is None:
+    def get(self, request, *args, **kwargs):
+        print("DEBUG: Received GET request for courses")  # Debug log
+        try:
             courses = Course.objects.prefetch_related(
                 Prefetch(
                     'students',
                     queryset=User.objects.only('id')
                 ),
                 'sections'
-            ).select_related(
-                'course_type_config'
-            ).annotate(
-                student_count=Count('students'),
-                section_count=Count('sections')
-            )
+            ).select_related('exclusivity_group')
             
-            courses_data = []
-            for course in courses:
-                courses_data.append({
-                    'id': course.id,
-                    'name': course.name,
-                    'code': course.code,
-                    'grade_level': course.grade_level,
-                    'duration': course.duration,
-                    'course_type': course.course_type,
-                    'total_capacity': course.get_total_capacity(),
-                    'student_count': course.student_count,
-                    'section_count': course.section_count,
-                    'available_space': course.get_available_space()
-                })
-            
-            cache.set(cache_key, courses_data, CACHE_TIMEOUT)
-        
-        return JsonResponse({'courses': courses_data})
+            print(f"DEBUG: Found {courses.count()} courses")  # Debug log
+            return JsonResponse({
+                'courses': [
+                    {
+                        'id': course.id,
+                        'name': course.name,
+                        'code': course.code,
+                        'grade_level': course.grade_level,
+                        'duration': course.duration,
+                        'course_type': course.course_type,
+                        'total_capacity': course.get_total_capacity(),
+                        'student_count': course.students.count(),
+                        'section_count': course.sections.count(),
+                        'available_space': course.get_available_space(),
+                        'exclusivity_group': course.exclusivity_group.id if course.exclusivity_group else None,
+                    }
+                    for course in courses
+                ]
+            })
+        except Exception as e:
+            print(f"DEBUG: Error in CourseListView: {str(e)}")  # Debug log
+            return JsonResponse({'error': str(e)}, status=500)
 
     @transaction.atomic
     @handle_exceptions
@@ -288,4 +328,138 @@ class CourseListView(View):
             })
             
         except ValidationError as e:
-            return JsonResponse({'error': str(e)}, status=400) 
+            return JsonResponse({'error': str(e)}, status=400)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class CourseGroupView(View):
+    def get(self, request, group_id=None, *args, **kwargs):
+        print("DEBUG: Received GET request for course groups")  # Debug log
+        try:
+            if group_id is not None:
+                group = CourseGroup.objects.get(id=group_id)
+                return JsonResponse({
+                    'group': {
+                        'id': group.id,
+                        'name': group.name,
+                        'courses': [
+                            {
+                                'id': course.id,
+                                'name': course.name,
+                                'code': course.code,
+                                'grade_level': course.grade_level
+                            }
+                            for course in group.courses.all()
+                        ]
+                    }
+                })
+            else:
+                groups = CourseGroup.objects.prefetch_related('courses').all()
+                print(f"DEBUG: Found {groups.count()} groups")  # Debug log
+                return JsonResponse({
+                    'groups': [
+                        {
+                            'id': group.id,
+                            'name': group.name,
+                            'courses': [
+                                {
+                                    'id': course.id,
+                                    'name': course.name,
+                                    'code': course.code,
+                                    'grade_level': course.grade_level
+                                }
+                                for course in group.courses.all()
+                            ]
+                        }
+                        for group in groups
+                    ]
+                })
+        except CourseGroup.DoesNotExist:
+            return JsonResponse({'error': 'Group not found'}, status=404)
+        except Exception as e:
+            print(f"DEBUG: Error in CourseGroupView: {str(e)}")  # Debug log
+            return JsonResponse({'error': str(e)}, status=500)
+
+    @transaction.atomic
+    @handle_exceptions
+    @log_execution_time
+    def post(self, request, group_id=None):
+        data = json.loads(request.body)
+        
+        # Check if this is an "add filtered courses" request
+        if data.get('add_filtered_students'):
+            if not group_id:
+                return JsonResponse({'error': 'Group ID is required'}, status=400)
+            
+            group = get_object_or_404(CourseGroup, id=group_id)
+            grade_level = data.get('grade_level')
+            search_query = data.get('search_query', '').strip()
+            
+            # Start with all available courses
+            courses_query = Course.objects.all()
+            
+            # Exclude already added courses
+            existing_course_ids = set(group.courses.values_list('id', flat=True))
+            if existing_course_ids:
+                courses_query = courses_query.exclude(id__in=existing_course_ids)
+            
+            # Apply grade level filter if specified
+            if grade_level:
+                courses_query = courses_query.filter(grade_level=grade_level)
+            
+            # Apply search filter if specified
+            if search_query:
+                courses_query = courses_query.filter(
+                    Q(name__icontains=search_query) |
+                    Q(code__icontains=search_query)
+                )
+            
+            courses = courses_query.all()
+            
+            # Add the filtered courses to the group
+            group.courses.add(*courses)
+            
+            logger.info(
+                f"Added {courses.count()} filtered courses to group {group_id}",
+                extra={
+                    'grade_level': grade_level,
+                    'search_query': search_query,
+                    'course_count': courses.count()
+                }
+            )
+            
+            return JsonResponse({
+                'status': 'success',
+                'added_count': courses.count()
+            })
+        
+        # Regular group update/create request
+        if group_id:
+            group = CourseGroup.objects.get(id=group_id)
+            if 'name' in data:
+                group.name = data['name']
+            if 'course_ids' in data:
+                group.courses.set(Course.objects.filter(id__in=data['course_ids']))
+            group.save()
+        else:
+            group = CourseGroup.objects.create(name=data['name'])
+            if 'course_ids' in data:
+                group.courses.set(Course.objects.filter(id__in=data['course_ids']))
+        
+        return JsonResponse({
+            'id': group.id,
+            'name': group.name,
+            'courses': [{
+                'id': course.id,
+                'name': course.name,
+                'code': course.code,
+                'grade_level': course.grade_level
+            } for course in group.courses.all()]
+        })
+
+    @transaction.atomic
+    @handle_exceptions
+    @log_execution_time
+    def delete(self, request, group_id):
+        group = CourseGroup.objects.get(id=group_id)
+        group.delete()
+        return JsonResponse({'status': 'success'}) 

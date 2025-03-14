@@ -24,19 +24,25 @@ def upload_page(request):
         if not file.name.endswith('.csv'):
             context['errors'] = ['File must be a CSV']
         else:
-            handlers = {
-                'users': handle_user_csv,
-                'courses': handle_course_csv,
-                'sections': handle_section_csv,
-                'periods': handle_period_csv,
-                'rooms': handle_room_csv,
-            }
-            
             try:
-                created_count, errors = handlers[data_type](file)
-                context['message'] = f'Successfully created {created_count} {data_type}'
-                if errors:
-                    context['errors'] = errors
+                if data_type == 'sections':
+                    created_count, existing_count, errors = handle_section_csv(file)
+                    context['message'] = f'Successfully created {created_count} sections'
+                    if existing_count > 0:
+                        context['message'] += f' ({existing_count} sections already existed and were updated)'
+                    if errors:
+                        context['errors'] = errors
+                else:
+                    handlers = {
+                        'users': handle_user_csv,
+                        'courses': handle_course_csv,
+                        'periods': handle_period_csv,
+                        'rooms': handle_room_csv,
+                    }
+                    created_count, errors = handlers[data_type](file)
+                    context['message'] = f'Successfully created {created_count} {data_type}'
+                    if errors:
+                        context['errors'] = errors
             except Exception as e:
                 context['errors'] = [str(e)]
     
@@ -57,27 +63,35 @@ def upload_csv(request):
     if not file.name.endswith('.csv'):
         return Response({'error': 'File must be a CSV'}, status=400)
     
-    handlers = {
-        'users': handle_user_csv,
-        'courses': handle_course_csv,
-        'sections': handle_section_csv,
-        'periods': handle_period_csv,
-        'rooms': handle_room_csv,
-    }
-    
-    if data_type not in handlers:
-        return Response(
-            {'error': f'Invalid data type. Must be one of: {", ".join(handlers.keys())}'},
-            status=400
-        )
-    
     try:
-        created_count, errors = handlers[data_type](file)
-        
-        response_data = {
-            'message': f'Successfully created {created_count} {data_type}',
-            'created_count': created_count,
-        }
+        if data_type == 'sections':
+            created_count, existing_count, errors = handle_section_csv(file)
+            response_data = {
+                'message': f'Successfully created {created_count} sections',
+                'created_count': created_count,
+                'existing_count': existing_count,
+            }
+            if existing_count > 0:
+                response_data['message'] += f' ({existing_count} sections already existed and were updated)'
+        else:
+            handlers = {
+                'users': handle_user_csv,
+                'courses': handle_course_csv,
+                'periods': handle_period_csv,
+                'rooms': handle_room_csv,
+            }
+            
+            if data_type not in handlers:
+                return Response(
+                    {'error': f'Invalid data type. Must be one of: {", ".join(handlers.keys())}'},
+                    status=400
+                )
+            
+            created_count, errors = handlers[data_type](file)
+            response_data = {
+                'message': f'Successfully created {created_count} {data_type}',
+                'created_count': created_count,
+            }
         
         if errors:
             response_data['errors'] = errors

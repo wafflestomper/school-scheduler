@@ -1,33 +1,26 @@
-from .base import BaseConfiguration
 from .users import User
-from .course import Course
+from .course import Course, CourseGroup, LanguageGroup
 from .section import Section
 from .period import Period
 from .facilities import Room
-from .groups import StudentGroup, SiblingGroup
-from .scheduling import Schedule, StudentPreference
 from .configuration import (
+    BaseConfiguration,
     SchedulingConfiguration,
-    SiblingConfiguration,
-    StudentGroupConfiguration,
-    ElectiveConfiguration,
     CourseTypeConfiguration
 )
+from .scheduling import Schedule, StudentPreference
 
 __all__ = [
-    'BaseConfiguration',
     'User',
     'Course',
+    'CourseGroup',
+    'LanguageGroup',
     'Section',
     'Period',
     'Room',
-    'StudentGroup',
-    'SiblingGroup',
-    'Schedule',
-    'StudentPreference',
+    'BaseConfiguration',
     'SchedulingConfiguration',
-    'SiblingConfiguration',
-    'StudentGroupConfiguration',
-    'ElectiveConfiguration',
-    'CourseTypeConfiguration'
+    'CourseTypeConfiguration',
+    'Schedule',
+    'StudentPreference'
 ] 

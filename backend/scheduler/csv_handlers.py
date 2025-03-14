@@ -39,8 +39,9 @@ def handle_course_csv(csv_file):
     """
     Handle CSV upload for courses
     Expected CSV format:
-    name,code,description,teacher_username,max_students,grade_level,num_sections,duration
+    name,code,description,teacher_username,max_students,grade_level,num_sections,duration,course_type
     Note: max_students represents total course capacity, will be divided by num_sections
+    Note: course_type defaults to CORE for year-long courses and ELECTIVE for trimester courses if not specified
     """
     decoded_file = csv_file.read().decode('utf-8')
     io_string = io.StringIO(decoded_file)
@@ -56,6 +57,16 @@ def handle_course_csv(csv_file):
             num_sections = int(row.get('num_sections', 1))
             max_per_section = total_students // num_sections
             
+            # Get duration and set default course type based on it
+            duration = row.get('duration', 'YEAR').upper()
+            default_type = 'CORE' if duration == 'YEAR' else 'ELECTIVE'
+            
+            # Use specified course type or default based on duration
+            course_type = row.get('course_type', default_type).upper()
+            if course_type not in ['CORE', 'ELECTIVE']:
+                errors.append(f"Warning on row {reader.line_num}: Invalid course type '{course_type}' - defaulting to {default_type}")
+                course_type = default_type
+            
             # Create course without teacher first
             course = Course(
                 name=row['name'],
@@ -64,7 +75,8 @@ def handle_course_csv(csv_file):
                 max_students_per_section=max_per_section,
                 grade_level=int(row['grade_level']),
                 num_sections=num_sections,
-                duration=row.get('duration', 'YEAR').upper()  # Default to YEAR if not specified
+                duration=duration,
+                course_type=course_type
             )
             
             # Only try to set teacher if username is provided
@@ -140,14 +152,16 @@ def handle_section_csv(csv_file):
     """
     Handle CSV upload for sections
     Expected CSV format:
-    course_code,section_number,teacher_username,period_name,room_name,max_size
-    Note: teacher_username, period_name, room_name, and max_size are optional
+    course_code,section_number,teacher_username,period_name,room_name,max_size,trimester
+    Note: teacher_username, period_name, room_name, max_size are optional
+    Note: trimester is required for trimester courses (1, 2, or 3) and should not be set for year-long courses
     """
     decoded_file = csv_file.read().decode('utf-8')
     io_string = io.StringIO(decoded_file)
     reader = csv.DictReader(io_string)
     
     created_count = 0
+    existing_count = 0
     errors = []
     
     def standardize_period_name(period_name):
@@ -187,6 +201,23 @@ def handle_section_csv(csv_file):
             section_number = int(row['section_number'])
             if section_number > course.num_sections:
                 raise ValueError(f"Section number {section_number} exceeds course's number of sections ({course.num_sections})")
+            
+            # Handle trimester assignment
+            trimester = None
+            if row.get('trimester'):
+                if course.duration != 'TRIMESTER':
+                    errors.append(f"Warning on row {reader.line_num}: Trimester specified for non-trimester course {course.code}")
+                else:
+                    try:
+                        trimester = int(row['trimester'])
+                        if trimester not in [1, 2, 3]:
+                            raise ValueError("Trimester must be 1, 2, or 3")
+                    except ValueError as e:
+                        errors.append(f"Error on row {reader.line_num}: Invalid trimester value - {str(e)}")
+                        continue
+            elif course.duration == 'TRIMESTER':
+                errors.append(f"Error on row {reader.line_num}: No trimester specified for trimester course {course.code}")
+                continue
             
             # Get teacher if provided
             teacher = None
@@ -233,7 +264,8 @@ def handle_section_csv(csv_file):
                     'teacher': teacher,
                     'period': period,
                     'room': room,
-                    'name': f"{course.code}-{section_number}"
+                    'name': f"{course.code}-{section_number}",
+                    'trimester': trimester
                 }
             )
             
@@ -247,12 +279,10 @@ def handle_section_csv(csv_file):
             
             if created:
                 created_count += 1
+            else:
+                existing_count += 1
             
-        except Course.DoesNotExist:
-            errors.append(f"Error on row {reader.line_num}: Course with code {row['course_code']} not found")
-        except ValueError as e:
-            errors.append(f"Error on row {reader.line_num}: {str(e)}")
         except Exception as e:
             errors.append(f"Error on row {reader.line_num}: {str(e)}")
     
-    return created_count, errors
+    return created_count, existing_count, errors

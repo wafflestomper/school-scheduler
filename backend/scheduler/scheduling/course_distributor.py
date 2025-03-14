@@ -1,7 +1,7 @@
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 from django.db import transaction
 from django.db.models import Count, Q, Sum
-from ..models import Course, Section, User, Period
+from ..models import Course, Section, User, Period, LanguageGroup
 import logging
 import random
 from collections import defaultdict
@@ -298,77 +298,153 @@ def distribute_all_courses() -> Dict[str, any]:
             clear_all_distributions()
             logger.info("Cleared all existing distributions")
 
-            # Get all courses with registered students, ordered by:
-            # 1. Course type (Required courses first)
-            # 2. Number of sections (ascending)
-            # 3. Number of students (descending)
-            courses = Course.objects.annotate(
-                student_count=Count('students'),
-                section_count=Count('sections')
+            # First handle language groups
+            language_groups = LanguageGroup.objects.all()
+            language_results = {}
+            
+            for group in language_groups:
+                try:
+                    # Get all students in the grade level
+                    students = list(User.objects.filter(
+                        role='STUDENT',
+                        grade_level=group.grade_level
+                    ))
+                    random.shuffle(students)  # Randomize initial student order
+                    
+                    if not students:
+                        language_results[group.name] = {
+                            'success': False,
+                            'error': f'No students found in grade {group.grade_level}'
+                        }
+                        continue
+                    
+                    # Get all courses in the language group
+                    courses = list(group.courses.all())
+                    if not courses:
+                        language_results[group.name] = {
+                            'success': False,
+                            'error': 'No courses found in language group'
+                        }
+                        continue
+                    
+                    # Get all allowed periods for this group
+                    allowed_periods = list(group.periods.all())
+                    if not allowed_periods:
+                        language_results[group.name] = {
+                            'success': False,
+                            'error': 'No periods configured for language group'
+                        }
+                        continue
+
+                    # Initialize course results and clear existing assignments
+                    course_results = {}
+                    for course in courses:
+                        course.students.clear()
+                        course_results[course.name] = {
+                            'total_students': 0,
+                            'sections': {}
+                        }
+
+                    # Create all necessary sections first and clear them
+                    all_sections = []
+                    for course in courses:
+                        for period in allowed_periods:
+                            section = course.sections.filter(period=period).first()
+                            if not section:
+                                section = Section.objects.create(
+                                    course=course,
+                                    section_number=course.get_next_section_number(),
+                                    period=period
+                                )
+                            section.students.clear()
+                            all_sections.append(section)
+
+                    # Calculate students per period
+                    students_per_period = len(students) // len(allowed_periods)
+
+                    # Assign students to periods first
+                    student_period_assignments = {}
+                    for period_idx, period in enumerate(allowed_periods):
+                        start_idx = period_idx * students_per_period
+                        end_idx = start_idx + students_per_period
+                        period_students = students[start_idx:end_idx]
+                        for student in period_students:
+                            student_period_assignments[student.id] = period
+
+                    # For each period
+                    for period in allowed_periods:
+                        # Get students assigned to this period
+                        period_students = [s for s in students if student_period_assignments[s.id] == period]
+                        
+                        # For each student in this period
+                        for student in period_students:
+                            # Assign them to each course in a different trimester
+                            for course_idx, course in enumerate(courses):
+                                # Find the section for this course in this period
+                                section = next(s for s in all_sections if s.course == course and s.period == period)
+                                
+                                # Determine trimester (rotate based on course index)
+                                trimester = course_idx + 1
+                                
+                                # Set the trimester
+                                section.trimester = trimester
+                                section.save()
+                                
+                                # Add student to section and course
+                                section.students.add(student)
+                                course.students.add(student)
+                                
+                                # Update course results
+                                course_results[course.name]['total_students'] += 1
+                                if section.id not in course_results[course.name]['sections']:
+                                    course_results[course.name]['sections'][section.id] = {
+                                        'section_name': section.name,
+                                        'period': period.name,
+                                        'trimester': trimester,
+                                        'students': []
+                                    }
+                                
+                                course_results[course.name]['sections'][section.id]['students'].append({
+                                    'id': student.id,
+                                    'first_name': student.first_name,
+                                    'last_name': student.last_name,
+                                    'grade_level': student.grade_level
+                                })
+                    
+                    language_results[group.name] = {
+                        'success': True,
+                        'courses': course_results
+                    }
+                    
+                except Exception as e:
+                    language_results[group.name] = {
+                        'success': False,
+                        'error': str(e)
+                    }
+            
+            # Now handle regular course distribution
+            results = {}
+            courses = Course.objects.exclude(
+                id__in=LanguageGroup.objects.values_list('courses', flat=True)
             ).filter(
-                student_count__gt=0
-            ).order_by(
-                '-course_type',  # 'Required' sorts higher than 'Elective'
-                'section_count',
-                '-student_count'
-            )
-
-            # Validate all courses first
+                students__isnull=False
+            ).distinct()
+            
             for course in courses:
-                validation = validate_course_sections(course)
-                if not validation['valid']:
-                    return {'success': False, 'error': validation['error']}
-
-            results = {
+                try:
+                    result = distribute_course_students(course.id)
+                    results[course.name] = result
+                except Exception as e:
+                    results[course.name] = {
+                        'success': False,
+                        'error': str(e)
+                    }
+            
+            return {
                 'success': True,
-                'courses': [],
-                'grade_level_stats': {}
+                'language_groups': language_results,
+                'courses': results
             }
-
-            # Track grade levels that need validation
-            grade_levels = set()
-
-            for course in courses:
-                logger.info(f"Starting distribution for course {course.name} (ID: {course.id})")
-                course_result = distribute_course_students(course.id)
-                
-                # Track grade levels for validation
-                if course.course_type == 'Required':
-                    grade_levels.add(course.grade_level)
-                
-                # Verify no conflicts after distribution
-                sections = Section.objects.filter(course=course).select_related('course')
-                for section in sections:
-                    for student in section.students.all():
-                        other_sections = Section.objects.filter(
-                            students=student,
-                            period_id=section.period_id
-                        ).exclude(course=course)
-                        if other_sections.exists():
-                            logger.error(
-                                f"Conflict found after distribution: Student {student.id} "
-                                f"assigned to multiple sections in period {section.period_id}"
-                            )
-                            # Remove the conflicting assignment
-                            section.students.remove(student)
-                
-                results['courses'].append({
-                    'course_name': course.name,
-                    'course_code': course.code,
-                    'success': course_result['success'],
-                    'error': course_result.get('error'),
-                    'distribution': course_result.get('distribution', []),
-                    'unassigned_students': course_result.get('unassigned_students', [])
-                })
-
-            # Validate grade level requirements
-            for grade_level in grade_levels:
-                validation = validate_grade_level_distribution(grade_level)
-                if not validation['valid']:
-                    logger.error(f"Grade level validation failed: {validation['error']}")
-                results['grade_level_stats'][grade_level] = validation
-
-            return results
 
     except Exception as e:
         logger.error(f"Error in distribute_all_courses: {str(e)}")

@@ -278,6 +278,8 @@ class CourseListView(View):
                         'section_count': course.sections.count(),
                         'available_space': course.get_available_space(),
                         'exclusivity_group': course.exclusivity_group.id if course.exclusivity_group else None,
+                        'student_count_requirement_type': course.student_count_requirement_type,
+                        'required_student_count': course.required_student_count,
                     }
                     for course in courses
                 ]
@@ -293,7 +295,37 @@ class CourseListView(View):
         """Handle POST requests for creating new courses"""
         data = json.loads(request.body)
         
-        # Validate required fields
+        # Check if this is a student count requirement update
+        if data.get('update_requirements'):
+            try:
+                requirements = data.get('requirements', [])
+                for req in requirements:
+                    course_id = req.get('course_id')
+                    requirement_type = req.get('requirement_type')
+                    required_count = req.get('required_count')
+                    
+                    if not all([course_id, requirement_type]):
+                        return JsonResponse({
+                            'error': f'Missing required fields for course {course_id}'
+                        }, status=400)
+                    
+                    course = Course.objects.get(id=course_id)
+                    course.student_count_requirement_type = requirement_type
+                    if required_count is not None:
+                        course.required_student_count = required_count
+                    course.save()
+                
+                return JsonResponse({
+                    'status': 'success',
+                    'message': f'Updated requirements for {len(requirements)} courses'
+                })
+            
+            except Course.DoesNotExist:
+                return JsonResponse({'error': 'Course not found'}, status=404)
+            except Exception as e:
+                return JsonResponse({'error': str(e)}, status=400)
+        
+        # Regular course creation logic continues...
         required_fields = ['name', 'grade_level']
         missing_fields = [field for field in required_fields if field not in data]
         if missing_fields:

@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.admin import AdminSite
 from .base import TeacherFilterMixin
 from .users import UserAdmin
-from .course_admin import CourseAdmin, LanguageGroupAdmin
+from .course_admin import CourseAdmin, LanguageGroupAdmin, CourseGroupAdmin
 from .section_admin import SectionAdmin
 from .period_admin import PeriodAdmin
 from .facilities import RoomAdmin
@@ -18,7 +18,8 @@ from ..models import (
     Room,
     SchedulingConfiguration,
     CourseTypeConfiguration,
-    LanguageGroup
+    LanguageGroup,
+    CourseGroup
 )
 
 class CustomAdminSite(AdminSite):
@@ -39,6 +40,7 @@ admin.site.register(Room, RoomAdmin)
 admin.site.register(SchedulingConfiguration, SchedulingConfigurationAdmin)
 admin.site.register(CourseTypeConfiguration, CourseTypeConfigurationAdmin)
 admin.site.register(LanguageGroup, LanguageGroupAdmin)
+admin.site.register(CourseGroup, CourseGroupAdmin)
 
 __all__ = [
     'TeacherFilterMixin',
@@ -49,5 +51,6 @@ __all__ = [
     'RoomAdmin',
     'SchedulingConfigurationAdmin',
     'CourseTypeConfigurationAdmin',
-    'LanguageGroupAdmin'
+    'LanguageGroupAdmin',
+    'CourseGroupAdmin'
 ] 

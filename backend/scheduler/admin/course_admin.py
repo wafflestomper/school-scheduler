@@ -16,12 +16,18 @@ import requests
 
 @admin.register(CourseGroup)
 class CourseGroupAdmin(admin.ModelAdmin):
-    list_display = ('name', 'get_courses')
+    list_display = ('name', 'get_courses', 'description')
     search_fields = ('name', 'description')
     
     def get_courses(self, obj):
         return ", ".join([course.name for course in obj.courses.all()])
-    get_courses.short_description = 'Mutually Exclusive Courses'
+    get_courses.short_description = 'Courses in Group'
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if obj:
+            form.base_fields['courses'].queryset = Course.objects.all().order_by('grade_level', 'name')
+        return form
 
 @admin.register(LanguageGroup)
 class LanguageGroupAdmin(admin.ModelAdmin):

@@ -14,6 +14,7 @@ from ..scheduling.course_distributor import (
     get_course_distribution_status
 )
 import logging
+from typing import Dict
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class CourseDistributionMixin:
                 'grade_level': course.grade_level,
                 'total_students': status['total_students'],
                 'num_sections': status['num_sections'],
+                'created_sections': status['created_sections'],
                 'is_distributed': status['is_distributed']
             })
         
@@ -91,4 +93,37 @@ class CourseDistributionMixin:
     def get_distribution(self, request, course_id):
         """API endpoint to get distribution status for a course"""
         result = get_course_distribution_status(course_id)
-        return JsonResponse(result) 
+        return JsonResponse(result)
+
+def get_course_distribution_status(course_id: int) -> Dict[str, any]:
+    """
+    Get the current distribution status for a course.
+    """
+    try:
+        course = Course.objects.get(id=course_id)
+        sections = Section.objects.filter(course=course)
+        created_sections = sections.count()
+        
+        return {
+            'success': True,
+            'course_name': course.name,
+            'course_code': course.code,
+            'total_students': course.students.count(),
+            'num_sections': course.num_sections,
+            'created_sections': created_sections,
+            'is_distributed': sections.filter(students__isnull=False).exists(),
+            'distribution': [
+                {
+                    'section_name': section.name,
+                    'student_count': section.students.count(),
+                    'period': section.period.name if section.period else None,
+                    'students': list(section.students.values('id', 'first_name', 'last_name', 'grade_level'))
+                }
+                for section in sections
+            ]
+        }
+    except Course.DoesNotExist:
+        return {'success': False, 'error': f'Course with id {course_id} not found'}
+    except Exception as e:
+        logger.error(f"Error getting course distribution status: {str(e)}")
+        return {'success': False, 'error': str(e)} 

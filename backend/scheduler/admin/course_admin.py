@@ -4,16 +4,53 @@ from django.urls import path
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.shortcuts import render
-from ..models import Course, User, CourseTypeConfiguration
+from django.db.models import Prefetch
+from django.utils.html import format_html
+from ..models import Course, User, CourseTypeConfiguration, Section, CourseGroup, LanguageGroup
+from ..choices import CourseTypes
 from .distribution_admin import CourseDistributionMixin
 import json
 
+@admin.register(CourseGroup)
+class CourseGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'get_courses')
+    search_fields = ('name', 'description')
+    
+    def get_courses(self, obj):
+        return ", ".join([course.name for course in obj.courses.all()])
+    get_courses.short_description = 'Mutually Exclusive Courses'
+
+@admin.register(LanguageGroup)
+class LanguageGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'grade_level', 'get_periods', 'get_courses')
+    list_filter = ('grade_level',)
+    search_fields = ('name',)
+    filter_horizontal = ('periods', 'courses')
+    
+    def get_courses(self, obj):
+        return ", ".join([course.name for course in obj.courses.all()])
+    get_courses.short_description = 'Language Courses'
+
+    def get_periods(self, obj):
+        return ", ".join([str(period) for period in obj.periods.all()])
+    get_periods.short_description = 'Periods'
+
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "courses":
+            kwargs["queryset"] = Course.objects.filter(
+                course_type=CourseTypes.LANGUAGE
+            ).order_by('name')
+        elif db_field.name == "periods":
+            kwargs["queryset"] = db_field.related_model.objects.all().order_by('start_time')
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
 @admin.register(Course)
 class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
-    list_display = ('name', 'code', 'course_type', 'duration', 'num_sections', 'max_students_per_section', 'grade_level', 'get_student_count', 'get_available_space')
-    list_filter = ('course_type', 'duration', 'grade_level')
+    list_display = ('name', 'code', 'course_type', 'duration', 'get_section_count', 'max_students_per_section', 'grade_level', 'get_student_count', 'get_available_space', 'get_student_count_requirement', 'get_exclusivity_group')
+    list_filter = ('course_type', 'duration', 'grade_level', 'student_count_requirement_type', 'exclusivity_group')
     search_fields = ('name', 'code', 'description')
     exclude = ('students',)
+    readonly_fields = ('get_student_count_requirement',)
     
     # Use our custom template for the course list
     change_list_template = 'admin/scheduler/course/change_list.html'
@@ -23,10 +60,14 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
             'fields': ('name', 'code', 'description')
         }),
         ('Course Settings', {
-            'fields': ('course_type', 'duration', 'grade_level')
+            'fields': ('course_type', 'duration', 'grade_level', 'exclusivity_group')
         }),
         ('Capacity Settings', {
             'fields': ('num_sections', 'max_students_per_section')
+        }),
+        ('Student Count Requirements', {
+            'fields': ('student_count_requirement_type', 'required_student_count', 'get_student_count_requirement'),
+            'description': 'Specify how many students should be enrolled in this course. Default is to try to enroll all students in the grade.'
         }),
     )
     
@@ -37,6 +78,37 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
     def get_available_space(self, obj):
         return obj.get_available_space()
     get_available_space.short_description = 'Available Spots'
+
+    def get_section_count(self, obj):
+        created_sections = obj.sections.count()
+        total_sections = obj.num_sections
+        color = '#28a745' if created_sections == total_sections else '#dc3545'
+        return format_html('<span style="color: {}; font-weight: bold;">{}/{}</span>', 
+                         color, created_sections, total_sections)
+    get_section_count.short_description = 'Sections (Created/Total)'
+
+    def get_student_count_requirement(self, obj):
+        if obj.student_count_requirement_type == 'FULL_GRADE':
+            return 'All students in grade'
+        elif obj.student_count_requirement_type == 'EXACT':
+            return f'Exactly {obj.required_student_count} students'
+        elif obj.student_count_requirement_type == 'MIN':
+            return f'At least {obj.required_student_count} students'
+        elif obj.student_count_requirement_type == 'MAX':
+            return f'At most {obj.required_student_count} students'
+        # Default case should be Full Grade since that's the model's default
+        return 'All students in grade'
+    get_student_count_requirement.short_description = 'Student Count Requirement'
+
+    def get_exclusivity_group(self, obj):
+        if obj.exclusivity_group:
+            return format_html(
+                '<span title="{}">{}*</span>',
+                "Mutually exclusive with: " + ", ".join([c.name for c in obj.exclusivity_group.courses.exclude(pk=obj.pk)]),
+                obj.exclusivity_group.name
+            )
+        return "-"
+    get_exclusivity_group.short_description = 'Exclusivity Group'
 
     @method_decorator(csrf_exempt)
     def dispatch(self, request, *args, **kwargs):
@@ -81,6 +153,11 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
                 name='course_registered_students',
             ),
             path(
+                '<int:course_id>/enrolled-students/',
+                self.admin_site.admin_view(self.enrolled_students_view),
+                name='course_enrolled_students',
+            ),
+            path(
                 '<int:course_id>/available-students/',
                 self.admin_site.admin_view(self.available_students_view),
                 name='course_available_students',
@@ -117,13 +194,45 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
         return super().changelist_view(request, extra_context)
 
     def registered_students_view(self, request, course_id):
+        """Get students who are registered but not yet assigned to sections"""
         course = self.get_object(request, course_id)
         if course is None:
             return JsonResponse({'error': 'Course not found'}, status=404)
         
-        students = course.students.values('id', 'first_name', 'last_name', 'grade_level')
+        # Get all students assigned to sections
+        enrolled_student_ids = set()
+        for section in course.sections.all():
+            enrolled_student_ids.update(section.students.values_list('id', flat=True))
+        
+        # Get registered students who are not enrolled in any section
+        registered_students = course.students.exclude(
+            id__in=enrolled_student_ids
+        ).values('id', 'first_name', 'last_name', 'grade_level')
+        
         return JsonResponse({
-            'students': list(students),
+            'students': list(registered_students),
+            'course_grade': course.grade_level
+        })
+
+    def enrolled_students_view(self, request, course_id):
+        """Get students who are assigned to sections"""
+        course = self.get_object(request, course_id)
+        if course is None:
+            return JsonResponse({'error': 'Course not found'}, status=404)
+        
+        enrolled_students = []
+        for section in course.sections.prefetch_related('students'):
+            for student in section.students.all():
+                enrolled_students.append({
+                    'id': student.id,
+                    'first_name': student.first_name,
+                    'last_name': student.last_name,
+                    'grade_level': student.grade_level,
+                    'section_number': section.section_number
+                })
+        
+        return JsonResponse({
+            'students': enrolled_students,
             'course_grade': course.grade_level
         })
 
@@ -134,9 +243,15 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
         
         config = CourseTypeConfiguration.objects.filter(active=True).first()
         
+        # Get all registered student IDs (both in course.students and in sections)
+        registered_ids = set(course.students.values_list('id', flat=True))
+        for section in course.sections.all():
+            registered_ids.update(section.students.values_list('id', flat=True))
+        
         # Get students not in this course
-        registered_ids = course.students.values_list('id', flat=True)
-        students_query = User.objects.filter(role='STUDENT').exclude(id__in=registered_ids)
+        students_query = User.objects.filter(role='STUDENT')
+        if registered_ids:
+            students_query = students_query.exclude(id__in=registered_ids)
         
         # Apply grade level restrictions if configured
         if config and config.enforce_grade_levels and not config.allow_mixed_levels:
@@ -145,11 +260,9 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
         students = students_query.values('id', 'first_name', 'last_name', 'grade_level')
         
         # Get available grades
-        available_grades_query = User.objects.filter(role='STUDENT')
-        if config and config.enforce_grade_levels and not config.allow_mixed_levels:
-            available_grades_query = available_grades_query.filter(grade_level=course.grade_level)
-        
-        available_grades = list(available_grades_query.values_list(
+        available_grades = list(User.objects.filter(
+            role='STUDENT'
+        ).values_list(
             'grade_level', flat=True
         ).distinct().order_by('grade_level'))
         
@@ -157,6 +270,8 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
             'students': list(students),
             'course_grade': course.grade_level,
             'available_grades': available_grades,
+            'total_capacity': course.get_total_capacity(),
+            'available_space': course.get_available_space(),
             'enforce_grade_levels': config.enforce_grade_levels if config else False,
             'allow_mixed_levels': config.allow_mixed_levels if config else True
         })
@@ -189,6 +304,9 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
         try:
             student = User.objects.get(id=student_id, role='STUDENT')
             course.students.remove(student)
+            # Also remove from any sections
+            for section in course.sections.all():
+                section.students.remove(student)
             return JsonResponse({'status': 'success'})
         except User.DoesNotExist:
             return JsonResponse({'error': 'Student not found'}, status=404)
@@ -204,7 +322,11 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
             return JsonResponse({'error': 'Course not found'}, status=404)
         
         try:
+            # Remove from course registration
             course.students.clear()
+            # Remove from all sections
+            for section in course.sections.all():
+                section.students.clear()
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
@@ -245,8 +367,35 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
                         status=400
                     )
             
+            # Check for mutual exclusivity violations
+            if course.exclusivity_group:
+                exclusive_courses = course.exclusivity_group.courses.exclude(pk=course.pk)
+                conflicting_students = []
+                for student in students:
+                    if exclusive_courses.filter(students=student).exists():
+                        conflicting_course = exclusive_courses.filter(students=student).first()
+                        conflicting_students.append({
+                            'student': f"{student.first_name} {student.last_name}",
+                            'course': conflicting_course.name
+                        })
+                
+                if conflicting_students:
+                    error_messages = []
+                    for conflict in conflicting_students:
+                        error_messages.append(
+                            f"{conflict['student']} is already enrolled in {conflict['course']}"
+                        )
+                    return JsonResponse({
+                        'error': f"Cannot enroll students in mutually exclusive courses:\n" + "\n".join(error_messages)
+                    }, status=400)
+            
+            # Add students to the course
             course.students.add(*students)
-            return JsonResponse({'status': 'success'})
+            
+            return JsonResponse({
+                'status': 'success',
+                'message': f'Added {len(students)} students to {course.name}'
+            })
             
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid JSON data'}, status=400)
@@ -269,8 +418,18 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
             })
         return super().change_view(request, object_id, form_url, extra_context)
 
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        if 'student_count_requirement_type' in form.base_fields:
+            form.base_fields['student_count_requirement_type'].widget.attrs['onchange'] = 'toggleRequiredStudentCount(this.value)'
+        return form
+
     class Media:
         css = {
             'all': ('admin/css/custom_admin.css',)
         }
-        js = ('admin/js/jquery.init.js', 'admin/js/core.js') 
+        js = (
+            'admin/js/jquery.init.js',
+            'admin/js/core.js',
+            'admin/js/course_admin.js',
+        ) 

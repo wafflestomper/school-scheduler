@@ -12,10 +12,12 @@ class UserRoles:
 class CourseTypes:
     CORE = 'CORE'
     ELECTIVE = 'ELECTIVE'
+    LANGUAGE = 'LANGUAGE'
     
     CHOICES = (
         (CORE, 'Core'),
         (ELECTIVE, 'Elective'),
+        (LANGUAGE, 'Language'),
     )
 
 class CourseDurations:
@@ -61,4 +63,15 @@ class GenderChoices:
     CHOICES = [
         (MALE, 'Male'),
         (FEMALE, 'Female'),
+    ]
+
+class TrimesterChoices:
+    FIRST = 1
+    SECOND = 2
+    THIRD = 3
+    
+    CHOICES = [
+        (FIRST, 'Trimester 1'),
+        (SECOND, 'Trimester 2'),
+        (THIRD, 'Trimester 3'),
     ] 

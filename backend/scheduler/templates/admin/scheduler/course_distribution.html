@@ -137,6 +137,15 @@
         border: 1px solid #ffcdd2;
         border-radius: 4px;
     }
+    .section-count {
+        font-weight: bold;
+    }
+    .section-count.complete {
+        color: #28a745;  /* Green */
+    }
+    .section-count.incomplete {
+        color: #dc3545;  /* Red */
+    }
 </style>
 {% endblock %}
 
@@ -173,10 +182,10 @@
         <tbody>
             {% for course in courses %}
             <tr id="course-row-{{ course.id }}">
-                <td>{{ course.name }} ({{ course.code }})</td>
+                <td><a href="{% url 'admin:scheduler_course_change' course.id %}" style="color: #417690; text-decoration: none;">{{ course.name }} ({{ course.code }})</a></td>
                 <td>{{ course.grade_level }}</td>
                 <td>{{ course.total_students }}</td>
-                <td>{{ course.num_sections }}</td>
+                <td><span class="section-count {% if course.created_sections == course.num_sections %}complete{% else %}incomplete{% endif %}">{{ course.created_sections }}/{{ course.num_sections }}</span></td>
                 <td id="status-{{ course.id }}">
                     {% if course.is_distributed %}
                     Distributed

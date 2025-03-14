@@ -14,13 +14,16 @@ jobs:
       pull-requests: write
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      
       - name: Auto Approve
         uses: hmarr/auto-approve-action@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Enable Auto-merge
-        run: gh pr merge --auto --merge "$PR_URL"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }} 
+        uses: peter-evans/enable-pull-request-automerge@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          pull-request-number: ${{ github.event.pull_request.number }}
+          merge-method: squash 

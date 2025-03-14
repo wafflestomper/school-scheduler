@@ -1,0 +1,15 @@
+name,code,description,teacher_username,max_students,grade_level,num_sections,duration
+6th Grade English,ENG6,Year-long required English course focusing on literature and writing,,80,6,5,YEAR
+6th Grade Math,MATH6,Year-long required Mathematics course covering pre-algebra concepts,,80,6,5,YEAR
+6th Grade Science,SCI6,Year-long required Science course covering earth and life sciences,,80,6,5,YEAR
+6th Grade History,HIS6,Year-long required History course covering ancient civilizations,,80,6,5,YEAR
+6th Grade Art,ART6,Trimester Art course,,80,6,3,Trimester
+6th Grade Music,MUS6,Trimester Music course,,80,6,3,Trimester
+6th Grade Woodworking,WW6,Trimester Woodworking course,,80,6,3,Trimester
+6th Grade Chinese,CHI6,Trimester Chinese course,,80,6,5,Trimester
+6th Grade Spanish,SPA6,Trimester Spanish course,,80,6,5,Trimester
+6th Grade French,FRE6,Trimester French course,,80,6,5,Trimester
+6th Grade Health & Wellness,HW6,Trimester Health course,,80,6,3,Trimester
+6th Grade Wellness & Health,WH6,Trimester Wellness course,,80,6,3,Trimester
+6th Grade Coding & Theatre Arts,CTA6,Trimester Coding course,,80,6,3,Trimester
+6th Grade Theatre Arts & Coding,TAC6,Trimester Health course,,80,6,3,Trimester

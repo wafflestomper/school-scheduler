@@ -53,14 +53,17 @@
             <div class="example-header">
                 <a href="{% url 'serve_csv' filename='users.csv' %}" class="download-link">Download Sample</a>
             </div>
-            <pre>username,email,first_name,last_name,role,grade_level,password
-john.smith,john.smith@school.edu,John,Smith,TEACHER,,password123
-jane.doe,jane.doe@school.edu,Jane,Doe,STUDENT,7,password123</pre>
+            <pre>username,user_id,email,first_name,last_name,role,grade_level,gender,password
+john.smith,T1001,john.smith@school.edu,John,Smith,TEACHER,,,changeme123
+jane.doe,S1001,jane.doe@school.edu,Jane,Doe,STUDENT,7,F,
+bob.wilson,T1002,bob.wilson@school.edu,Bob,Wilson,TEACHER,,,</pre>
             <p>Notes:</p>
             <ul>
+                <li>username, user_id, and email are required fields</li>
                 <li>role: Must be either 'TEACHER' or 'STUDENT'</li>
                 <li>grade_level: Required for students, leave empty for teachers</li>
-                <li>password: Will be automatically hashed</li>
+                <li>gender: Optional, can be 'M' or 'F'</li>
+                <li>password: Optional, defaults to 'changeme123' if not provided (see bob.wilson example)</li>
             </ul>
         </div>
 

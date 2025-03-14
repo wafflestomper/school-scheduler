@@ -2,12 +2,18 @@ import csv
 import io
 from django.contrib.auth.hashers import make_password
 from .models import User, Course, Period, Room, Section
+from .choices import UserRoles
+import logging
+
+logger = logging.getLogger(__name__)
 
 def handle_user_csv(csv_file):
     """
     Handle CSV upload for users (students and teachers)
     Expected CSV format:
-    username,email,first_name,last_name,role,grade_level,password
+    username,user_id,email,first_name,last_name,role,grade_level,gender,password
+    Note: password is optional, defaults to 'changeme123'
+    Note: role can be STUDENT/student or TEACHER/teacher, will be stored as uppercase
     """
     decoded_file = csv_file.read().decode('utf-8')
     io_string = io.StringIO(decoded_file)
@@ -18,17 +24,38 @@ def handle_user_csv(csv_file):
     
     for row in reader:
         try:
-            # Create user with hashed password
+            # Validate required fields
+            required_fields = ['username', 'user_id', 'email']
+            for field in required_fields:
+                if not row.get(field):
+                    raise ValueError(f"Missing required field: {field}")
+
+            # Check if user_id already exists
+            if User.objects.filter(user_id=row['user_id']).exists():
+                raise ValueError(f"User ID {row['user_id']} already exists")
+
+            # Normalize and validate role
+            role = row.get('role', 'STUDENT').upper().strip()
+            if role not in [UserRoles.STUDENT, UserRoles.TEACHER]:
+                raise ValueError(f"Invalid role: {role}. Must be either 'student' or 'teacher' (case insensitive)")
+
+            logger.debug(f"Processing user {row['username']} with role: {role}")
+
+            # Create user with hashed password (use default if not provided)
+            password = row.get('password', 'changeme123')
             user = User(
                 username=row['username'],
+                user_id=row['user_id'],
                 email=row['email'],
-                first_name=row['first_name'],
-                last_name=row['last_name'],
-                role=row['role'],
-                grade_level=int(row['grade_level']) if row['grade_level'] else None,
-                password=make_password(row['password'])
+                first_name=row.get('first_name', ''),
+                last_name=row.get('last_name', ''),
+                role=role,
+                grade_level=int(row['grade_level']) if row.get('grade_level') else None,
+                gender=row.get('gender'),
+                password=make_password(password)
             )
             user.save()
+            logger.debug(f"Created user {user.username} with role: {user.role}")
             created_count += 1
         except Exception as e:
             errors.append(f"Error on row {reader.line_num}: {str(e)}")

@@ -404,19 +404,18 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
 
     def change_view(self, request, object_id, form_url='', extra_context=None):
         extra_context = extra_context or {}
-        if object_id:
-            # Get unique grade levels for the grade filter
-            grade_levels = list(User.objects.filter(
-                role='STUDENT'
-            ).values_list(
-                'grade_level', flat=True
-            ).distinct().order_by('grade_level'))
+        course = self.get_object(request, object_id)
+        if course:
+            # Set initial grade level filter to match course grade level
+            extra_context['initial_grade_level'] = course.grade_level
             
+            # Add course info to context
             extra_context.update({
-                'available_grades': grade_levels,
-                'show_student_management': True
+                'course': course,
+                'has_sections': course.sections.exists(),
+                'distribution_enabled': True,
             })
-        return super().change_view(request, object_id, form_url, extra_context)
+        return super().change_view(request, object_id, form_url, extra_context=extra_context)
 
     def get_form(self, request, obj=None, **kwargs):
         form = super().get_form(request, obj, **kwargs)

@@ -220,6 +220,15 @@ document.addEventListener('DOMContentLoaded', function() {
         `).join('') || '<p>No available students match the filters</p>';
     }
     
+    async function refreshAllLists() {
+        // First load enrolled students
+        await loadEnrolledStudents();
+        // Then load registered (but not enrolled) students
+        await loadRegisteredStudents();
+        // Finally load available students (not registered or enrolled)
+        await loadAvailableStudents();
+    }
+
     window.addStudent = async function(studentId) {
         try {
             const response = await fetch(`/admin/scheduler/course/${courseId}/add-student/${studentId}/`, {
@@ -235,8 +244,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(data.error || 'Failed to add student');
             }
             
-            showSuccess('Student added successfully');
-            await Promise.all([loadRegisteredStudents(), loadEnrolledStudents(), loadAvailableStudents()]);
+            showSuccess('Student registered successfully');
+            await refreshAllLists();
         } catch (error) {
             showError(error.message);
         }
@@ -257,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             showSuccess('Student removed successfully');
-            await Promise.all([loadRegisteredStudents(), loadEnrolledStudents(), loadAvailableStudents()]);
+            await refreshAllLists();
         } catch (error) {
             showError(error.message);
         }
@@ -282,51 +291,56 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             showSuccess('All students removed successfully');
-            await Promise.all([loadRegisteredStudents(), loadEnrolledStudents(), loadAvailableStudents()]);
+            await refreshAllLists();
         } catch (error) {
             showError(error.message);
         }
     };
     
     window.addAllFilteredStudents = async function() {
-        console.log('addAllFilteredStudents called');
         try {
             const gradeValue = gradeFilter ? gradeFilter.value : '';
-            const searchValue = searchFilter ? searchFilter.value : '';
+            const searchValue = searchFilter ? searchFilter.value.toLowerCase() : '';
             
-            console.log('Sending request with:', {
-                courseId,
-                gradeValue,
-                searchValue
+            // Get all filtered students' IDs
+            const filteredStudents = availableStudents.filter(student => {
+                const matchesGrade = !gradeValue || student.grade_level === parseInt(gradeValue);
+                const matchesSearch = !searchValue || 
+                    `${student.first_name} ${student.last_name}`.toLowerCase().includes(searchValue);
+                return matchesGrade && matchesSearch;
             });
 
-            const response = await fetch(`/scheduler/courses/${courseId}/add-students/`, {
+            const studentIds = filteredStudents.map(student => student.id);
+            
+            if (studentIds.length === 0) {
+                showError('No students match the current filters');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to register ${studentIds.length} students to this course?`)) {
+                return;
+            }
+
+            const response = await fetch(`/admin/scheduler/course/${courseId}/add-students/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                 },
                 body: JSON.stringify({
-                    add_filtered_students: true,
-                    grade_level: gradeValue ? parseInt(gradeValue) : null,
-                    search_query: searchValue
+                    student_ids: studentIds
                 })
             });
             
-            console.log('Response status:', response.status);
-            
             if (!response.ok) {
                 const data = await response.json();
-                throw new Error(data.error || 'Failed to add filtered students');
+                throw new Error(data.error || 'Failed to register filtered students');
             }
             
             const data = await response.json();
-            console.log('Response data:', data);
-            
-            showSuccess(`Successfully added ${data.added_count} students`);
-            await Promise.all([loadRegisteredStudents(), loadEnrolledStudents(), loadAvailableStudents()]);
+            showSuccess(data.message || `Successfully registered ${studentIds.length} students`);
+            await refreshAllLists();
         } catch (error) {
-            console.error('Error in addAllFilteredStudents:', error);
             showError(error.message);
         }
     };
@@ -341,9 +355,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Initial load
-    loadRegisteredStudents();
-    loadEnrolledStudents();
-    loadAvailableStudents();
+    refreshAllLists();
 });
 </script>
 {% endblock %}

@@ -11,11 +11,13 @@ class UserRoles:
 
 class CourseTypes:
     CORE = 'CORE'
+    REQUIRED_ELECTIVE = 'REQUIRED_ELECTIVE'
     ELECTIVE = 'ELECTIVE'
     LANGUAGE = 'LANGUAGE'
     
     CHOICES = (
         (CORE, 'Core'),
+        (REQUIRED_ELECTIVE, 'Required Elective'),
         (ELECTIVE, 'Elective'),
         (LANGUAGE, 'Language'),
     )

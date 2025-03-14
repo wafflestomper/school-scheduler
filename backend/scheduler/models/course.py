@@ -125,11 +125,11 @@ class Course(models.Model):
         help_text="Duration of the course (YEAR, TRIMESTER, QUARTER)"
     )
     course_type: str = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=CourseTypes.CHOICES,
         default=CourseTypes.CORE,
         db_index=True,
-        help_text="Type of course (CORE or ELECTIVE)"
+        help_text="Type of course (CORE, REQUIRED_ELECTIVE, ELECTIVE, or LANGUAGE)"
     )
     students = models.ManyToManyField(
         User,

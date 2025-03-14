@@ -10,6 +10,9 @@ from ..models import Course, User, CourseTypeConfiguration, Section, CourseGroup
 from ..choices import CourseTypes
 from .distribution_admin import CourseDistributionMixin
 import json
+from django.template.response import TemplateResponse
+from django.contrib import messages
+import requests
 
 @admin.register(CourseGroup)
 class CourseGroupAdmin(admin.ModelAdmin):
@@ -51,6 +54,7 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
     search_fields = ('name', 'code', 'description')
     exclude = ('students',)
     readonly_fields = ('get_student_count_requirement',)
+    actions = ['bulk_enroll_students']
     
     # Use our custom template for the course list
     change_list_template = 'admin/scheduler/course/change_list.html'
@@ -181,6 +185,11 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
                 '<int:course_id>/add-students/',
                 self.admin_site.admin_view(self.add_students_view),
                 name='course_add_students',
+            ),
+            path(
+                'bulk-enroll/',
+                self.admin_site.admin_view(self.bulk_enroll_view),
+                name='course_bulk_enroll'
             ),
         ]
         return custom_urls + urls
@@ -422,6 +431,67 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
         if 'student_count_requirement_type' in form.base_fields:
             form.base_fields['student_count_requirement_type'].widget.attrs['onchange'] = 'toggleRequiredStudentCount(this.value)'
         return form
+
+    def bulk_enroll_view(self, request):
+        """Handle bulk enrollment view"""
+        # Get unique grade levels
+        grade_levels = Course.objects.values_list(
+            'grade_level', flat=True
+        ).distinct().order_by('grade_level')
+        
+        context = {
+            **self.admin_site.each_context(request),
+            'title': 'Bulk Enroll Students in Core Courses',
+            'grade_levels': grade_levels,
+            'opts': self.model._meta,
+        }
+        
+        return TemplateResponse(
+            request,
+            'admin/scheduler/course/bulk_enroll.html',
+            context
+        )
+    
+    def bulk_enroll_students(self, request, queryset):
+        """Bulk enroll action"""
+        selected_grades = {course.grade_level for course in queryset}
+        if not selected_grades:
+            self.message_user(request, "No courses selected", level=messages.ERROR)
+            return
+        
+        try:
+            response = requests.post(
+                'http://localhost:8000/scheduler/api/bulk-enroll/',
+                json={'grade_levels': list(selected_grades)},
+                headers={'Content-Type': 'application/json'}
+            )
+            
+            data = response.json()
+            if response.status_code == 200:
+                total_enrollments = sum(
+                    grade_data['total_enrollments']
+                    for grade_data in data['enrollments'].values()
+                )
+                self.message_user(
+                    request,
+                    f"Successfully enrolled students. Total enrollments: {total_enrollments}",
+                    level=messages.SUCCESS
+                )
+            else:
+                self.message_user(
+                    request,
+                    f"Error: {data.get('error', 'Unknown error')}",
+                    level=messages.ERROR
+                )
+                
+        except Exception as e:
+            self.message_user(
+                request,
+                f"Error: {str(e)}",
+                level=messages.ERROR
+            )
+    
+    bulk_enroll_students.short_description = "Bulk enroll students in selected courses"
 
     class Media:
         css = {

@@ -1,0 +1,124 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static "admin/css/forms.css" %}">
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+  <div class="module">
+    <h2>Bulk Enroll Students in Core Courses</h2>
+    <div class="description">
+      <p>Select the grade levels for which you want to enroll students in core courses. This will:</p>
+      <ul>
+        <li>Find all students in the selected grade(s)</li>
+        <li>Find all core courses for those grade(s)</li>
+        <li>Enroll each student in all core courses for their grade</li>
+      </ul>
+    </div>
+    
+    <form id="bulk-enroll-form" method="post">
+      {% csrf_token %}
+      <fieldset class="module aligned">
+        <div class="form-row">
+          <label>Grade Levels:</label>
+          <div class="grade-checkboxes">
+            {% for grade in grade_levels %}
+            <div>
+              <input type="checkbox" name="grade_levels" value="{{ grade }}" id="grade_{{ grade }}">
+              <label for="grade_{{ grade }}">Grade {{ grade }}</label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="clear_existing">Clear Existing Enrollments:</label>
+          <input type="checkbox" name="clear_existing" id="clear_existing">
+          <p class="help">If checked, will remove existing enrollments before adding new ones</p>
+        </div>
+      </fieldset>
+      <div class="submit-row">
+        <input type="submit" value="Enroll Students" class="default">
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+document.getElementById('bulk-enroll-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const gradeCheckboxes = document.querySelectorAll('input[name="grade_levels"]:checked');
+  const grades = Array.from(gradeCheckboxes).map(cb => parseInt(cb.value));
+  
+  if (grades.length === 0) {
+    alert('Please select at least one grade level');
+    return;
+  }
+  
+  const clearExisting = document.getElementById('clear_existing').checked;
+  
+  try {
+    const response = await fetch('/scheduler/api/bulk-enroll/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: JSON.stringify({
+        grade_levels: grades,
+        clear_existing: clearExisting
+      })
+    });
+    
+    const data = await response.json();
+    
+    if (response.ok) {
+      let message = 'Enrollment complete!\n\n';
+      for (const [grade, results] of Object.entries(data.enrollments)) {
+        message += `Grade ${grade}:\n`;
+        message += `- Students processed: ${results.students_processed}\n`;
+        message += `- Courses processed: ${results.courses_processed}\n`;
+        message += `- Total enrollments: ${results.total_enrollments}\n\n`;
+      }
+      if (data.errors.length > 0) {
+        message += 'Warnings:\n' + data.errors.join('\n');
+      }
+      alert(message);
+      window.location.href = "{% url 'admin:scheduler_course_changelist' %}";
+    } else {
+      alert('Error: ' + (data.error || 'Unknown error occurred'));
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+  }
+});
+</script>
+
+<style>
+.grade-checkboxes {
+  display: inline-block;
+  margin-left: 10px;
+}
+.grade-checkboxes > div {
+  display: inline-block;
+  margin-right: 20px;
+}
+.description {
+  margin: 10px 0 20px;
+  padding: 10px;
+  background: #f8f8f8;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+.description ul {
+  margin: 10px 0 0 20px;
+  padding: 0;
+}
+.description li {
+  margin: 5px 0;
+}
+</style>
+{% endblock %} 

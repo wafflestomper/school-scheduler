@@ -92,7 +92,7 @@ class Period(models.Model):
             'total_students': total_students,
             'duration_minutes': self.duration_minutes(),
             'sections_by_type': {
-                'required': sections.filter(course__course_type='REQUIRED').count(),
+                'core': sections.filter(course__course_type='CORE').count(),
                 'elective': sections.filter(course__course_type='ELECTIVE').count()
             }
         }

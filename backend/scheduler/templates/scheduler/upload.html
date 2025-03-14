@@ -1,4 +1,5 @@
 {% extends "admin/base_site.html" %}
+{% load static %}
 
 {% block content %}
 <div id="content-main">
@@ -28,6 +29,7 @@
                 <select name="type" id="type" required>
                     <option value="users">Users</option>
                     <option value="courses">Courses</option>
+                    <option value="sections">Sections</option>
                     <option value="periods">Periods</option>
                     <option value="rooms">Rooms</option>
                 </select>
@@ -37,6 +39,7 @@
                 <input type="file" name="file" id="file" accept=".csv" required>
             </div>
             <div class="submit-row">
+                <p class="help-text">Note: If a record (e.g., section, course, etc.) already exists, it will be updated with the information from the uploaded file.</p>
                 <input type="submit" value="Upload" class="default">
             </div>
         </form>
@@ -46,14 +49,82 @@
         <h2>Example CSV Formats</h2>
         
         <div class="example">
+            <h3>Users (users.csv)</h3>
+            <div class="example-header">
+                <a href="{% url 'serve_csv' filename='users.csv' %}" class="download-link">Download Sample</a>
+            </div>
+            <pre>username,user_id,email,first_name,last_name,role,grade_level,gender,password
+john.smith,T1001,john.smith@school.edu,John,Smith,TEACHER,,,changeme123
+jane.doe,S1001,jane.doe@school.edu,Jane,Doe,STUDENT,7,F,
+bob.wilson,T1002,bob.wilson@school.edu,Bob,Wilson,TEACHER,,,</pre>
+            <p>Notes:</p>
+            <ul>
+                <li>username, user_id, and email are required fields</li>
+                <li>role: Must be either 'TEACHER' or 'STUDENT'</li>
+                <li>grade_level: Required for students, leave empty for teachers</li>
+                <li>gender: Optional, can be 'M' or 'F'</li>
+                <li>password: Optional, defaults to 'changeme123' if not provided (see bob.wilson example)</li>
+            </ul>
+        </div>
+
+        <div class="example">
+            <h3>Courses (courses.csv)</h3>
+            <div class="example-header">
+                <a href="{% url 'serve_csv' filename='courses.csv' %}" class="download-link">Download Sample</a>
+            </div>
+            <pre>name,code,description,teacher_username,max_students,grade_level,num_sections,duration
+English 7,ENG7,7th Grade English,john.smith,60,7,2,YEAR
+Math 7,MATH7,7th Grade Math,jane.doe,60,7,2,YEAR</pre>
+            <p>Notes:</p>
+            <ul>
+                <li>max_students: Total course capacity (will be divided by num_sections)</li>
+                <li>duration: Must be 'YEAR' or 'SEMESTER'</li>
+            </ul>
+        </div>
+
+        <div class="example">
+            <h3>Sections (sections.csv)</h3>
+            <div class="example-header">
+                <a href="{% url 'serve_csv' filename='sections.csv' %}" class="download-link">Download Sample</a>
+            </div>
+            <pre>course_code,section_number,teacher_username,period_name,room_name,max_size
+ENG7,1,john.smith,1st Period,Room 101,25
+ENG7,2,jane.doe,2,Room 102,
+MATH7,1,,1st,Room 201,30
+MATH7,2,,2nd Period,,28</pre>
+            <p>Notes:</p>
+            <ul>
+                <li>course_code: Required - Must match an existing course code</li>
+                <li>section_number: Required - Must not exceed course's number of sections</li>
+                <li>teacher_username: Optional - Must match an existing teacher's username if provided</li>
+                <li>period_name: Optional - Accepts formats like "1", "1st", "1st Period", or "1st period" (will be standardized to "1st Period")</li>
+                <li>room_name: Optional - Must match an existing room name if provided</li>
+                <li>max_size: Optional - Maximum number of students allowed in this section (if not provided, uses course's max_students_per_section)</li>
+            </ul>
+        </div>
+
+        <div class="example">
             <h3>Periods (periods.csv)</h3>
+            <div class="example-header">
+                <a href="{% url 'serve_csv' filename='periods.csv' %}" class="download-link">Download Sample</a>
+            </div>
             <pre>name,start_time,end_time
-1st Period,08:00,09:00
-2nd Period,09:00,10:00</pre>
+1st Period,08:00,08:50
+2nd Period,09:00,09:50
+6th Period,13:30,14:20
+7th Period,14:30,15:20</pre>
+            <p>Notes:</p>
+            <ul>
+                <li>Times must be in 24-hour format (e.g., 13:30 for 1:30 PM)</li>
+                <li>Each period should have unique start and end times</li>
+            </ul>
         </div>
 
         <div class="example">
             <h3>Rooms (rooms.csv)</h3>
+            <div class="example-header">
+                <a href="{% url 'serve_csv' filename='rooms.csv' %}" class="download-link">Download Sample</a>
+            </div>
             <pre>name,capacity,description
 Room 101,30,Math classroom
 Room 102,25,Science lab</pre>
@@ -82,6 +153,25 @@ Room 102,25,Science lab</pre>
         border-radius: 4px;
         margin-bottom: 20px;
     }
+    .example-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+    .download-link {
+        display: inline-block;
+        padding: 5px 10px;
+        background-color: #417690;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 0.9em;
+    }
+    .download-link:hover {
+        background-color: #205067;
+        color: white;
+    }
     .example pre {
         background-color: #f5f5f5;
         padding: 10px;
@@ -101,6 +191,18 @@ Room 102,25,Science lab</pre>
         padding: 15px;
         border-radius: 4px;
         margin: 20px 0;
+    }
+    .example ul {
+        margin-top: 10px;
+        padding-left: 20px;
+    }
+    .example li {
+        margin-bottom: 5px;
+    }
+    .help-text {
+        color: #666;
+        font-style: italic;
+        margin-bottom: 10px;
     }
 </style>
 {% endblock %}

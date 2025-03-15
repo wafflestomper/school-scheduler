@@ -16,7 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic.base import RedirectView
+from django.views.generic import RedirectView
 from scheduler.views.bulk_upload_views import BulkUserUploadView
 from django.conf import settings
 from django.conf.urls.static import static
@@ -55,9 +55,14 @@ def serve_csv(request, filename):
         raise Http404(f"Error reading file: {filename}")
 
 urlpatterns = [
-    path('', RedirectView.as_view(url='/admin/', permanent=True), name='index'),
+    path('', RedirectView.as_view(url='/admin/', permanent=True)),  # Redirect root to admin
     path('admin/', admin.site.urls),
+    path('api-auth/', include('rest_framework.urls')),  # For REST framework browsable API auth
     path('scheduler/', include('scheduler.urls')),  # Include scheduler URLs with prefix
     path('bulk-upload/users/', BulkUserUploadView.as_view(), name='bulk-user-upload'),
     path('download/csv/<str:filename>', serve_csv, name='serve_csv'),
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Serve static files during development
+if settings.DEBUG:
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

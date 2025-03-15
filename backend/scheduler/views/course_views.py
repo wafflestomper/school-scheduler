@@ -70,7 +70,9 @@ def handle_exceptions(func):
     return wrapper
 
 @method_decorator(csrf_exempt, name='dispatch')
-class CourseStudentView(View):
+class CourseStudentView(APIView):
+    permission_classes = [AllowAny]
+    
     def get_course_with_students(self, course_id: int) -> Course:
         """Get a course with its students, using cache if available"""
         cache_key = f'course_with_students_{course_id}'
@@ -251,119 +253,101 @@ class CourseStudentView(View):
         return JsonResponse({'status': 'success'})
 
 @method_decorator(csrf_exempt, name='dispatch')
-class CourseListView(View):
-    def get(self, request, *args, **kwargs):
-        print("DEBUG: Received GET request for courses")  # Debug log
-        try:
-            courses = Course.objects.prefetch_related(
-                Prefetch(
-                    'students',
-                    queryset=User.objects.only('id')
-                ),
-                'sections'
-            ).select_related('exclusivity_group')
-            
-            print(f"DEBUG: Found {courses.count()} courses")  # Debug log
-            return JsonResponse({
-                'courses': [
-                    {
-                        'id': course.id,
-                        'name': course.name,
-                        'code': course.code,
-                        'grade_level': course.grade_level,
-                        'duration': course.duration,
-                        'course_type': course.course_type,
-                        'total_capacity': course.get_total_capacity(),
-                        'student_count': course.students.count(),
-                        'section_count': course.sections.count(),
-                        'available_space': course.get_available_space(),
-                        'exclusivity_group': course.exclusivity_group.id if course.exclusivity_group else None,
-                        'student_count_requirement_type': course.student_count_requirement_type,
-                        'required_student_count': course.required_student_count,
-                    }
-                    for course in courses
-                ]
-            })
-        except Exception as e:
-            print(f"DEBUG: Error in CourseListView: {str(e)}")  # Debug log
-            return JsonResponse({'error': str(e)}, status=500)
+class CourseListView(APIView):
+    permission_classes = [AllowAny]
+    
+    @handle_exceptions
+    @log_execution_time
+    def get(self, request: HttpRequest) -> JsonResponse:
+        """Handle GET requests for course listing"""
+        print("\n=== CourseListView GET Request ===")
+        print("Headers:", request.headers)
+        print("Path:", request.path)
+        print("Method:", request.method)
+        print("=== End Request Info ===\n")
+        
+        cache_key = 'all_courses'
+        courses_data = cache.get(cache_key)
+        
+        if courses_data is None:
+            print("Cache miss - fetching courses from database")
+            courses = Course.objects.all().order_by('code')
+            courses_data = list(courses.values(
+                'id', 'name', 'code', 'description', 'grade_level',
+                'course_type', 'num_sections', 'max_students_per_section'
+            ))
+            cache.set(cache_key, courses_data, CACHE_TIMEOUT)
+        else:
+            print("Cache hit - using cached courses data")
+        
+        print(f"Retrieved {len(courses_data)} courses")
+        response = JsonResponse({'courses': courses_data})
+        response['Content-Type'] = 'application/json'
+        print("\n=== Sending Response ===")
+        print("Status: 200 OK")
+        print("Content-Type:", response['Content-Type'])
+        print("Data length:", len(courses_data))
+        print("=== End Response Info ===\n")
+        return response
 
-    @transaction.atomic
     @handle_exceptions
     @log_execution_time
     def post(self, request: HttpRequest) -> JsonResponse:
         """Handle POST requests for creating new courses"""
+        print("\n=== CourseListView POST Request ===")
+        print("Headers:", request.headers)
+        print("Path:", request.path)
+        print("Method:", request.method)
+        print("=== End Request Info ===\n")
+        
         data = json.loads(request.body)
-        
-        # Check if this is a student count requirement update
-        if data.get('update_requirements'):
-            try:
-                requirements = data.get('requirements', [])
-                for req in requirements:
-                    course_id = req.get('course_id')
-                    requirement_type = req.get('requirement_type')
-                    required_count = req.get('required_count')
-                    
-                    if not all([course_id, requirement_type]):
-                        return JsonResponse({
-                            'error': f'Missing required fields for course {course_id}'
-                        }, status=400)
-                    
-                    course = Course.objects.get(id=course_id)
-                    course.student_count_requirement_type = requirement_type
-                    if required_count is not None:
-                        course.required_student_count = required_count
-                    course.save()
-                
-                return JsonResponse({
-                    'status': 'success',
-                    'message': f'Updated requirements for {len(requirements)} courses'
-                })
-            
-            except Course.DoesNotExist:
-                return JsonResponse({'error': 'Course not found'}, status=404)
-            except Exception as e:
-                return JsonResponse({'error': str(e)}, status=400)
-        
-        # Regular course creation logic continues...
-        required_fields = ['name', 'grade_level']
-        missing_fields = [field for field in required_fields if field not in data]
-        if missing_fields:
-            return JsonResponse(
-                {'error': f'Missing required fields: {", ".join(missing_fields)}'},
-                status=400
-            )
         
         try:
             course = Course.objects.create(
                 name=data['name'],
-                code=data.get('code'),
+                code=data['code'],
                 description=data.get('description', ''),
                 grade_level=data['grade_level'],
-                num_sections=data.get('num_sections', 1),
-                max_students_per_section=data.get('max_students_per_section', 30),
-                duration=data.get('duration', CourseDurations.TRIMESTER),
-                course_type=data.get('course_type', CourseTypes.CORE)
+                course_type=data['course_type'],
+                num_sections=data['num_sections'],
+                max_students_per_section=data['max_students_per_section']
             )
             
-            # Clear cache
-            cache.delete('all_courses_list')
+            # Clear the cache
+            cache.delete('all_courses')
             
-            logger.info(
-                f"Created new course: {course.name}",
-                extra={'course_id': course.id, 'course_data': data}
-            )
+            print(f"Created new course: {course.code}")
+            response_data = {
+                'id': course.id,
+                'name': course.name,
+                'code': course.code,
+                'description': course.description,
+                'grade_level': course.grade_level,
+                'course_type': course.course_type,
+                'num_sections': course.num_sections,
+                'max_students_per_section': course.max_students_per_section
+            }
             
-            return JsonResponse({
-                'status': 'success',
-                'course_id': course.id
-            })
+            print("\n=== Sending Response ===")
+            print("Status: 201 Created")
+            print("Content-Type: application/json")
+            print("Response data:", response_data)
+            print("=== End Response Info ===\n")
             
-        except ValidationError as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse(response_data, status=201)
+            
+        except KeyError as e:
+            error_msg = f'Missing required field: {str(e)}'
+            print("\n=== Error Response ===")
+            print("Status: 400 Bad Request")
+            print("Error:", error_msg)
+            print("=== End Error Info ===\n")
+            return JsonResponse({'error': error_msg}, status=400)
 
 @method_decorator(csrf_exempt, name='dispatch')
-class CourseGroupView(View):
+class CourseGroupView(APIView):
+    permission_classes = [AllowAny]
+    
     def get(self, request, group_id=None, *args, **kwargs):
         print("DEBUG: Received GET request for course groups")  # Debug log
         try:

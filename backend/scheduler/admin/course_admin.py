@@ -433,7 +433,11 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
         return form
 
     def bulk_enroll_view(self, request):
+<<<<<<< HEAD
+        """Handle bulk registration view"""
+=======
         """Handle bulk enrollment view"""
+>>>>>>> main
         # Get unique grade levels
         grade_levels = Course.objects.values_list(
             'grade_level', flat=True
@@ -441,7 +445,11 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
         
         context = {
             **self.admin_site.each_context(request),
+<<<<<<< HEAD
+            'title': 'Bulk Register Students in Core Courses',
+=======
             'title': 'Bulk Enroll Students in Core Courses',
+>>>>>>> main
             'grade_levels': grade_levels,
             'opts': self.model._meta,
         }
@@ -453,7 +461,11 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
         )
     
     def bulk_enroll_students(self, request, queryset):
+<<<<<<< HEAD
+        """Bulk register action"""
+=======
         """Bulk enroll action"""
+>>>>>>> main
         selected_grades = {course.grade_level for course in queryset}
         if not selected_grades:
             self.message_user(request, "No courses selected", level=messages.ERROR)
@@ -468,6 +480,15 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
             
             data = response.json()
             if response.status_code == 200:
+<<<<<<< HEAD
+                total_registrations = sum(
+                    grade_data['total_registrations']
+                    for grade_data in data['registrations'].values()
+                )
+                self.message_user(
+                    request,
+                    f"Successfully registered students. Total registrations: {total_registrations}",
+=======
                 total_enrollments = sum(
                     grade_data['total_enrollments']
                     for grade_data in data['enrollments'].values()
@@ -475,6 +496,7 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
                 self.message_user(
                     request,
                     f"Successfully enrolled students. Total enrollments: {total_enrollments}",
+>>>>>>> main
                     level=messages.SUCCESS
                 )
             else:
@@ -491,7 +513,11 @@ class CourseAdmin(CourseDistributionMixin, admin.ModelAdmin):
                 level=messages.ERROR
             )
     
+<<<<<<< HEAD
+    bulk_enroll_students.short_description = "Bulk register students in selected courses"
+=======
     bulk_enroll_students.short_description = "Bulk enroll students in selected courses"
+>>>>>>> main
 
     class Media:
         css = {
